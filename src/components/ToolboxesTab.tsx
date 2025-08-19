@@ -5,7 +5,11 @@ import {
   Edit, 
   Trash2, 
   XCircle,
-  User
+  User,
+  Search,
+  Archive,
+  RotateCcw,
+  AlertTriangle
 } from 'lucide-react';
 import { useRBAC } from '../contexts/RBACContext';
 
@@ -14,6 +18,11 @@ interface Toolbox {
   Name: string;
   Description?: string;
   EmployeeID?: number;
+  IsActive: boolean;
+  IsRetired: boolean;
+  RetiredAt?: string;
+  RetiredBy?: number;
+  CreatedAt?: string;
 }
 
 interface Employee {
@@ -35,6 +44,9 @@ interface ToolboxesTabProps {
   setForm: (form: any) => void;
   onSubmit: (e: React.FormEvent) => void;
   onUpdate: (toolboxId: number, data: any) => Promise<void>;
+  onSoftDelete: (toolboxId: number) => Promise<void>;
+  onRetire: (toolboxId: number) => Promise<void>;
+  onReactivate: (toolboxId: number) => Promise<void>;
   resetForm: () => void;
 }
 
@@ -47,6 +59,9 @@ const ToolboxesTab: React.FC<ToolboxesTabProps> = ({
   setForm,
   onSubmit,
   onUpdate,
+  onSoftDelete,
+  onRetire,
+  onReactivate,
   resetForm
 }) => {
   const { hasPermission } = useRBAC();
@@ -57,13 +72,19 @@ const ToolboxesTab: React.FC<ToolboxesTabProps> = ({
   const [editEmployeeSearch, setEditEmployeeSearch] = useState('');
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [showEditEmployeeDropdown, setShowEditEmployeeDropdown] = useState(false);
+  const [toolboxSearch, setToolboxSearch] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showRetireModal, setShowRetireModal] = useState(false);
+  const [toolboxToDelete, setToolboxToDelete] = useState<Toolbox | null>(null);
+  const [toolboxToRetire, setToolboxToRetire] = useState<Toolbox | null>(null);
+  const [retireError, setRetireError] = useState<string>('');
 
   const handleEditClick = (toolbox: Toolbox) => {
     setEditingToolbox(toolbox);
     setEditForm({ 
       Name: toolbox.Name, 
       Description: toolbox.Description || '', 
-      EmployeeID: toolbox.EmployeeID 
+      EmployeeID: toolbox.EmployeeID || null 
     });
     // Set the search field to show the current employee name
     if (toolbox.EmployeeID) {
@@ -126,6 +147,27 @@ const ToolboxesTab: React.FC<ToolboxesTabProps> = ({
            lastName.includes(searchTerm);
   });
 
+  const filteredToolboxes = toolboxes.filter(toolbox => {
+    const searchTerm = toolboxSearch.toLowerCase().trim();
+    if (!searchTerm) return true;
+    
+    const toolboxName = toolbox.Name.toLowerCase();
+    const toolboxDescription = (toolbox.Description || '').toLowerCase();
+    
+    // Get owner name for search
+    let ownerName = '';
+    if (toolbox.EmployeeID) {
+      const employee = employees.find(emp => emp.EmployeeID === toolbox.EmployeeID);
+      if (employee) {
+        ownerName = `${employee.FirstName} ${employee.LastName}`.toLowerCase();
+      }
+    }
+    
+    return toolboxName.includes(searchTerm) || 
+           toolboxDescription.includes(searchTerm) || 
+           ownerName.includes(searchTerm);
+  });
+
   const handleEmployeeSelect = (employee: Employee, isEdit: boolean = false) => {
     if (isEdit) {
       setEditForm({...editForm, EmployeeID: employee.EmployeeID});
@@ -162,12 +204,62 @@ const ToolboxesTab: React.FC<ToolboxesTabProps> = ({
     setEditEmployeeSearch('');
     setShowEditEmployeeDropdown(false);
   };
+
+  // Soft delete handlers
+  const handleSoftDeleteClick = (toolbox: Toolbox) => {
+    setToolboxToDelete(toolbox);
+    setShowDeleteModal(true);
+  };
+
+  const handleSoftDeleteConfirm = async () => {
+    if (toolboxToDelete) {
+      await onSoftDelete(toolboxToDelete.ToolboxID);
+      setShowDeleteModal(false);
+      setToolboxToDelete(null);
+    }
+  };
+
+  // Retire handlers
+  const handleRetireClick = (toolbox: Toolbox) => {
+    setToolboxToRetire(toolbox);
+    setRetireError(''); // Clear any previous errors
+    setShowRetireModal(true);
+  };
+
+  const handleRetireConfirm = async () => {
+    if (toolboxToRetire) {
+      try {
+        setRetireError(''); // Clear any previous errors
+        await onRetire(toolboxToRetire.ToolboxID);
+        setShowRetireModal(false);
+        setToolboxToRetire(null);
+      } catch (error: any) {
+        // Extract the detailed error message from the backend
+        const errorMessage = error.response?.data?.detail || error.message;
+        setRetireError(errorMessage);
+        // Don't close the modal so user can see the error and tool list
+      }
+    }
+  };
+
+  // Reactivate handler
+  const handleReactivate = async (toolbox: Toolbox) => {
+    await onReactivate(toolbox.ToolboxID);
+  };
+
+  // Get toolbox status display
+  const getToolboxStatus = (toolbox: Toolbox) => {
+    if (toolbox.IsRetired === true) return { text: 'Retired', color: 'bg-gray-100 text-gray-800' };
+    if (toolbox.IsActive === false) return { text: 'Inactive', color: 'bg-red-100 text-red-800' };
+    return { text: 'Active', color: 'bg-green-100 text-green-800' };
+  };
+
   return (
     <div>
       {/* Header */}
       <div className="bg-white shadow rounded-lg mb-6">
         <div className="px-4 py-5 sm:p-6">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center mb-4">
             <div>
               <h3 className="text-lg leading-6 font-medium text-gray-900">
                 Toolboxes
@@ -186,12 +278,43 @@ const ToolboxesTab: React.FC<ToolboxesTabProps> = ({
               </button>
             )}
           </div>
+          
+          {/* Search */}
+          <div className="max-w-md">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Search Toolboxes
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                value={toolboxSearch}
+                onChange={(e) => setToolboxSearch(e.target.value)}
+                className="pl-10 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                placeholder="Search by toolbox name or owner..."
+              />
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Toolboxes Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {toolboxes.map((toolbox) => (
+        {filteredToolboxes.length === 0 ? (
+          <div className="col-span-full text-center py-8">
+            <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {toolboxSearch ? 'No toolboxes found' : 'No toolboxes yet'}
+            </h3>
+            <p className="text-gray-500">
+              {toolboxSearch 
+                ? 'Try adjusting your search terms or clear the search to see all toolboxes.'
+                : 'Get started by creating your first toolbox.'
+              }
+            </p>
+          </div>
+        ) : (
+          filteredToolboxes.map((toolbox) => (
           <div key={toolbox.ToolboxID} className="bg-white shadow rounded-lg p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
@@ -201,40 +324,76 @@ const ToolboxesTab: React.FC<ToolboxesTabProps> = ({
                   </div>
                 </div>
                 <div className="ml-4">
-                  <h4 className="text-lg font-medium text-gray-900">
-                    {toolbox.Name}
-                  </h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-lg font-medium text-gray-900">
+                      {toolbox.Name}
+                    </h4>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getToolboxStatus(toolbox).color}`}>
+                      {getToolboxStatus(toolbox).text}
+                    </span>
+                  </div>
                   <p className="text-sm text-gray-500">
                     {toolbox.Description || 'No description'}
                   </p>
-                                     <div className="text-sm text-gray-400 flex items-center mt-1">
-                     <User className="h-3 w-3 mr-1" />
-                     {getEmployeeName(toolbox.EmployeeID)}
-                   </div>
+                  <div className="text-sm text-gray-400 flex items-center mt-1">
+                    <User className="h-3 w-3 mr-1" />
+                    {getEmployeeName(toolbox.EmployeeID)}
+                  </div>
                 </div>
               </div>
-                             <div className="flex items-center space-x-2">
-                 {hasPermission('update_toolboxes') && (
-                   <button
-                     onClick={() => handleEditClick(toolbox)}
-                     className="text-blue-600 hover:text-blue-900"
-                     title="Edit Toolbox"
-                   >
-                     <Edit className="h-4 w-4" />
-                   </button>
-                 )}
-                 {hasPermission('delete_toolboxes') && (
-                   <button
-                     className="text-red-600 hover:text-red-900"
-                     title="Delete Toolbox"
-                   >
-                     <Trash2 className="h-4 w-4" />
-                   </button>
-                 )}
-               </div>
+              <div className="flex items-center space-x-2">
+                {/* Edit Button - Available for active toolboxes */}
+                {hasPermission('update_toolboxes') && toolbox.IsActive && !toolbox.IsRetired && (
+                  <button
+                    onClick={() => handleEditClick(toolbox)}
+                    className="text-blue-600 hover:text-blue-900"
+                    title="Edit Toolbox"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </button>
+                )}
+
+                {/* Action buttons based on toolbox status */}
+                {hasPermission('delete_toolboxes') && (
+                  <>
+                    {toolbox.IsRetired ? (
+                      /* Retired toolboxes - no actions available */
+                      <span className="text-gray-400 text-xs">No actions available</span>
+                    ) : !toolbox.IsActive ? (
+                      /* Inactive toolboxes - can be reactivated */
+                      <button
+                        onClick={() => handleReactivate(toolbox)}
+                        className="text-green-600 hover:text-green-900"
+                        title="Reactivate Toolbox"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      /* Active toolboxes - can be soft deleted or retired */
+                      <>
+                        <button
+                          onClick={() => handleSoftDeleteClick(toolbox)}
+                          className="text-orange-600 hover:text-orange-900"
+                          title="Deactivate Toolbox"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleRetireClick(toolbox)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Retire Toolbox"
+                        >
+                          <Archive className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Create Toolbox Modal */}
@@ -482,10 +641,154 @@ const ToolboxesTab: React.FC<ToolboxesTabProps> = ({
                </form>
              </div>
            </div>
-         </div>
-       )}
-     </div>
-   );
- };
+                 </div>
+      )}
+
+      {/* Soft Delete Confirmation Modal */}
+      {showDeleteModal && toolboxToDelete && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center mb-4">
+                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-orange-100">
+                  <Trash2 className="h-6 w-6 text-orange-600" />
+                </div>
+              </div>
+
+              <div className="text-center">
+                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-2">
+                  Deactivate Toolbox
+                </h3>
+                <div className="mt-2">
+                  <p className="text-sm text-gray-500 mb-3">
+                    Are you sure you want to deactivate the toolbox <strong>"{toolboxToDelete.Name}"</strong>?
+                  </p>
+                  
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
+                    <div className="flex">
+                      <AlertTriangle className="h-5 w-5 text-yellow-400" />
+                      <div className="ml-3 text-left">
+                        <h4 className="text-sm font-medium text-yellow-800">
+                          What happens when you deactivate:
+                        </h4>
+                        <div className="mt-1 text-sm text-yellow-700">
+                          <p>• The toolbox will be unassigned from its current employee</p>
+                          <p>• It will show as "Inactive" but remain visible</p>
+                          <p>• It can be reactivated later if needed</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+                <button
+                  onClick={handleSoftDeleteConfirm}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-orange-600 text-base font-medium text-white hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 sm:col-start-2 sm:text-sm"
+                >
+                  Deactivate
+                </button>
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:col-start-1 sm:text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Retire Confirmation Modal */}
+      {showRetireModal && toolboxToRetire && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center mb-4">
+                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                  <Archive className="h-6 w-6 text-red-600" />
+                </div>
+              </div>
+
+              <div className="text-center">
+                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-2">
+                  Retire Toolbox
+                </h3>
+                <div className="mt-2">
+                  <p className="text-sm text-gray-500 mb-3">
+                    Are you sure you want to retire the toolbox <strong>"{toolboxToRetire.Name}"</strong>?
+                  </p>
+                  
+                  <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
+                    <div className="flex">
+                      <AlertTriangle className="h-5 w-5 text-red-400" />
+                      <div className="ml-3 text-left">
+                        <h4 className="text-sm font-medium text-red-800">
+                          Important: Permanent Action
+                        </h4>
+                        <div className="mt-1 text-sm text-red-700">
+                          <p>
+                            • All active tools must be moved to the warehouse first
+                          </p>
+                          <p>
+                            • The toolbox will be unassigned from its employee
+                          </p>
+                          <p>
+                            • This action cannot be undone
+                          </p>
+                          <p>
+                            • The toolbox will be hidden from the system permanently
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Error display for retirement validation */}
+                  {retireError && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
+                      <div className="flex">
+                        <AlertTriangle className="h-5 w-5 text-red-400" />
+                        <div className="ml-3 text-left">
+                          <h4 className="text-sm font-medium text-red-800">
+                            Cannot Retire Toolbox
+                          </h4>
+                          <div className="mt-1 text-sm text-red-700">
+                            <pre className="whitespace-pre-wrap font-sans">{retireError}</pre>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+                <button
+                  onClick={handleRetireConfirm}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:col-start-2 sm:text-sm"
+                >
+                  Retire Toolbox
+                </button>
+                <button
+                  onClick={() => {
+                    setShowRetireModal(false);
+                    setRetireError(''); // Clear error when closing modal
+                    setToolboxToRetire(null);
+                  }}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:col-start-1 sm:text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default ToolboxesTab;

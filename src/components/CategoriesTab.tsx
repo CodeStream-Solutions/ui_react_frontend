@@ -4,7 +4,8 @@ import {
   Plus, 
   Edit, 
   Trash2, 
-  XCircle
+  XCircle,
+  AlertTriangle
 } from 'lucide-react';
 import { useRBAC } from '../contexts/RBACContext';
 
@@ -14,31 +15,45 @@ interface ToolCategory {
   Description?: string;
 }
 
+interface Tool {
+  ToolID: number;
+  SerialNumber: string;
+  Name: string;
+  CategoryID?: number;
+  IsActive: boolean;
+}
+
 interface CategoriesTabProps {
   categories: ToolCategory[];
+  tools: Tool[];
   showModal: boolean;
   setShowModal: (show: boolean) => void;
   form: any;
   setForm: (form: any) => void;
   onSubmit: (e: React.FormEvent) => void;
   onUpdate: (categoryId: number, data: any) => Promise<void>;
+  onDelete: (categoryId: number) => Promise<void>;
   resetForm: () => void;
 }
 
 const CategoriesTab: React.FC<CategoriesTabProps> = ({
   categories,
+  tools,
   showModal,
   setShowModal,
   form,
   setForm,
   onSubmit,
   onUpdate,
+  onDelete,
   resetForm
 }) => {
   const { hasPermission } = useRBAC();
   const [editingCategory, setEditingCategory] = useState<ToolCategory | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({ Name: '', Description: '' });
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<ToolCategory | null>(null);
 
   const handleEditClick = (category: ToolCategory) => {
     setEditingCategory(category);
@@ -54,6 +69,23 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({
       setEditingCategory(null);
       setEditForm({ Name: '', Description: '' });
     }
+  };
+
+  const handleDeleteClick = (category: ToolCategory) => {
+    setCategoryToDelete(category);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (categoryToDelete) {
+      await onDelete(categoryToDelete.CategoryID);
+      setShowDeleteModal(false);
+      setCategoryToDelete(null);
+    }
+  };
+
+  const getToolsInCategory = (categoryId: number) => {
+    return tools.filter(tool => tool.CategoryID === categoryId && tool.IsActive);
   };
   return (
     <div>
@@ -114,6 +146,7 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({
                 )}
                 {hasPermission('delete_categories') && (
                   <button
+                    onClick={() => handleDeleteClick(category)}
                     className="text-red-600 hover:text-red-900"
                     title="Delete Category"
                   >
@@ -237,6 +270,135 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({
                    </button>
                  </div>
                </form>
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* Delete Category Confirmation Modal */}
+       {showDeleteModal && categoryToDelete && (
+         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+             <div className="mt-3">
+               <div className="flex items-center mb-4">
+                 <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                   <AlertTriangle className="h-6 w-6 text-red-600" />
+                 </div>
+               </div>
+               
+               <div className="text-center">
+                 {(() => {
+                   const affectedTools = getToolsInCategory(categoryToDelete.CategoryID);
+                   const toolCount = affectedTools.length;
+                   
+                   if (toolCount > 0) {
+                     return (
+                       <>
+                         <h3 className="text-lg leading-6 font-medium text-gray-900 mb-2">
+                           Cannot Delete Category
+                         </h3>
+                         <div className="mt-2">
+                           <p className="text-sm text-gray-500 mb-3">
+                             The category <strong>"{categoryToDelete.Name}"</strong> cannot be deleted because it is currently being used by {toolCount} tool{toolCount !== 1 ? 's' : ''}.
+                           </p>
+                           
+                           <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
+                             <div className="flex">
+                               <AlertTriangle className="h-5 w-5 text-red-400" />
+                               <div className="ml-3 text-left">
+                                 <h4 className="text-sm font-medium text-red-800">
+                                   {toolCount} tool{toolCount !== 1 ? 's are' : ' is'} using this category
+                                 </h4>
+                                 <div className="mt-2 text-sm text-red-700">
+                                   <p>
+                                     The following tool{toolCount !== 1 ? 's' : ''} must be reassigned to a different category first:
+                                   </p>
+                                   <ul className="mt-1 list-disc list-inside max-h-24 overflow-y-auto">
+                                     {affectedTools.slice(0, 10).map(tool => (
+                                       <li key={tool.ToolID} className="text-xs">
+                                         {tool.Name} ({tool.SerialNumber})
+                                       </li>
+                                     ))}
+                                     {toolCount > 10 && (
+                                       <li className="text-xs font-medium">
+                                         ...and {toolCount - 10} more tool{toolCount - 10 !== 1 ? 's' : ''}
+                                       </li>
+                                     )}
+                                   </ul>
+                                   <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-blue-800">
+                                     <p className="font-medium text-xs">
+                                       💡 To delete this category:
+                                     </p>
+                                     <ol className="text-xs mt-1 list-decimal list-inside">
+                                       <li>Go to the <strong>Tools</strong> tab</li>
+                                       <li>Edit each tool listed above</li>
+                                       <li>Change their category to a different one</li>
+                                       <li>Then return here to delete this category</li>
+                                     </ol>
+                                   </div>
+                                 </div>
+                               </div>
+                             </div>
+                           </div>
+                         </div>
+                       </>
+                     );
+                   } else {
+                     return (
+                       <>
+                         <h3 className="text-lg leading-6 font-medium text-gray-900 mb-2">
+                           Delete Category
+                         </h3>
+                         <div className="mt-2">
+                           <p className="text-sm text-gray-500 mb-3">
+                             Are you sure you want to delete the category <strong>"{categoryToDelete.Name}"</strong>?
+                           </p>
+                           <p className="text-sm text-gray-500">
+                             This action cannot be undone.
+                           </p>
+                         </div>
+                       </>
+                     );
+                   }
+                 })()}
+               </div>
+               
+               {(() => {
+                 const affectedTools = getToolsInCategory(categoryToDelete.CategoryID);
+                 const toolCount = affectedTools.length;
+                 
+                 if (toolCount > 0) {
+                   // Category has tools - only show Close button
+                   return (
+                     <div className="mt-5 sm:mt-6">
+                       <button
+                         onClick={() => setShowDeleteModal(false)}
+                         className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm"
+                       >
+                         Close
+                       </button>
+                     </div>
+                   );
+                 } else {
+                   // Category is empty - show Delete and Cancel buttons
+                   return (
+                     <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+                       <button
+                         onClick={handleDeleteConfirm}
+                         className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:col-start-2 sm:text-sm"
+                       >
+                         Delete Category
+                       </button>
+                       <button
+                         onClick={() => setShowDeleteModal(false)}
+                         className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:col-start-1 sm:text-sm"
+                       >
+                         Cancel
+                       </button>
+                     </div>
+                   );
+                 }
+               })()}
              </div>
            </div>
          </div>

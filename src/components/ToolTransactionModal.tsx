@@ -562,6 +562,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
                 value={checkoutForm.ExpectedReturnDate}
                 onChange={(e) => setCheckoutForm({...checkoutForm, ExpectedReturnDate: e.target.value})}
                 min={new Date().toISOString().split('T')[0]}
+                max="2030-12-31"
                 className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               />
             </div>
@@ -728,6 +729,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
                 value={maintenanceForm.ExpectedReturnDate}
                 onChange={(e) => setMaintenanceForm({...maintenanceForm, ExpectedReturnDate: e.target.value})}
                 min={new Date().toISOString().split('T')[0]}
+                max="2030-12-31"
                 className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               />
             </div>

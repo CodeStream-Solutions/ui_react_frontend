@@ -76,6 +76,11 @@ interface Toolbox {
   Name: string;
   Description?: string;
   EmployeeID?: number;
+  IsActive: boolean;
+  IsRetired: boolean;
+  RetiredAt?: string;
+  RetiredBy?: number;
+  CreatedAt?: string;
 }
 
 interface Employee {
@@ -362,6 +367,25 @@ const ToolManagement: React.FC = () => {
     }
   };
 
+  const handleDeleteCategory = async (categoryId: number) => {
+    try {
+      setError('');
+      setSuccess('');
+
+      await toolApi.deleteToolCategory(categoryId);
+      
+      // Reset category filter if the deleted category was selected
+      if (categoryFilter === categoryId) {
+        setCategoryFilter('all');
+      }
+      
+      setSuccess('Category deleted successfully!');
+      loadData();
+    } catch (error: any) {
+      setError('Failed to delete category: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
   // Status type update removed - system-managed only
 
   const handleUpdateToolbox = async (toolboxId: number, data: any) => {
@@ -383,6 +407,51 @@ const ToolManagement: React.FC = () => {
       } else {
         setError('Failed to update toolbox: ' + errorMessage);
       }
+    }
+  };
+
+  const handleSoftDeleteToolbox = async (toolboxId: number) => {
+    try {
+      setError('');
+      setSuccess('');
+
+      await toolApi.softDeleteToolbox(toolboxId);
+      setSuccess('Toolbox deactivated successfully!');
+      loadData();
+    } catch (error: any) {
+      setError('Failed to deactivate toolbox: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const handleRetireToolbox = async (toolboxId: number) => {
+    try {
+      setError('');
+      setSuccess('');
+
+      await toolApi.retireToolbox(toolboxId);
+      setSuccess('Toolbox retired successfully!');
+      loadData();
+    } catch (error: any) {
+      // Let the ToolboxesTab component handle the error display in the modal
+      // Only set global error if it's not a validation error (which contains tool list)
+      const errorMessage = error.response?.data?.detail || error.message;
+      if (!errorMessage.includes('active tools are still in this toolbox')) {
+        setError('Failed to retire toolbox: ' + errorMessage);
+      }
+      throw error; // Re-throw so the ToolboxesTab can catch it
+    }
+  };
+
+  const handleReactivateToolbox = async (toolboxId: number) => {
+    try {
+      setError('');
+      setSuccess('');
+
+      await toolApi.reactivateToolbox(toolboxId);
+      setSuccess('Toolbox reactivated successfully!');
+      loadData();
+    } catch (error: any) {
+      setError('Failed to reactivate toolbox: ' + (error.response?.data?.detail || error.message));
     }
   };
 
@@ -451,11 +520,20 @@ const ToolManagement: React.FC = () => {
 
   // Filter tools based on search and filters
   const filteredTools = tools.filter(tool => {
+    // Get toolbox name for search
+    const getToolboxName = (toolboxId?: number) => {
+      if (!toolboxId) return '';
+      if (toolboxId === 1) return 'Warehouse';
+      const toolbox = toolboxes.find(tb => tb.ToolboxID === toolboxId);
+      return toolbox ? toolbox.Name : '';
+    };
+
     const matchesSearch = 
       tool.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tool.SerialNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tool.Description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tool.category?.Name.toLowerCase().includes(searchTerm.toLowerCase());
+      tool.category?.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      getToolboxName(tool.ToolboxID).toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = 
       statusFilter === 'all' || 
@@ -469,6 +547,11 @@ const ToolManagement: React.FC = () => {
     
     return matchesSearch && matchesStatus && matchesCategory;
   });
+
+  // Utility function to format counts with 999+ limit
+  const formatCount = (count: number): string => {
+    return count > 999 ? '999+' : count.toString();
+  };
 
   // Check if user has permission to view tools
   if (!hasPermission('view_tools') && !hasPermission('view_categories') && !hasPermission('view_toolboxes')) {
@@ -551,18 +634,22 @@ const ToolManagement: React.FC = () => {
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8 px-6">
               {[
-                { id: 'tools', name: 'Tools', icon: Wrench, count: tools.length, permission: 'view_tools' },
-                { id: 'categories', name: 'Categories', icon: Tag, count: categories.length, permission: 'view_categories' },
+                { id: 'tools', name: 'Tools', icon: Wrench, count: formatCount(tools.length), permission: 'view_tools' },
+                { id: 'categories', name: 'Categories', icon: Tag, count: formatCount(categories.length), permission: 'view_categories' },
                 // Status Types tab removed - system-managed only
-                { id: 'toolboxes', name: 'Toolboxes', icon: Package, count: toolboxes.length, permission: 'view_toolboxes' },
-                { id: 'transactions', name: 'Transactions', icon: ArrowRight, count: transactions.length, permission: 'view_transactions' },
-                { id: 'maintenance', name: 'Maintenance', icon: AlertTriangle, count: tools.filter(t => t.CurrentStatus === 3 && t.IsActive).length, permission: 'view_tools' }
+                { id: 'toolboxes', name: 'Toolboxes', icon: Package, count: formatCount(toolboxes.length), permission: 'view_toolboxes' },
+                { id: 'transactions', name: 'Transactions', icon: ArrowRight, count: formatCount(transactions.length), permission: 'view_transactions' },
+                { id: 'maintenance', name: 'Maintenance', icon: AlertTriangle, count: formatCount(tools.filter(t => t.CurrentStatus === 3 && t.IsActive).length), permission: 'view_tools' }
               ].filter(tab => hasPermission(tab.permission)).map((tab) => {
                 const Icon = tab.icon;
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as TabType)}
+                    onClick={() => {
+                      setActiveTab(tab.id as TabType);
+                      setSuccess('');
+                      setError('');
+                    }}
                     className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
                       activeTab === tab.id
                         ? 'border-blue-500 text-blue-600'
@@ -602,6 +689,9 @@ const ToolManagement: React.FC = () => {
             onSubmit={handleCreateTool}
             onToggleStatus={handleToggleToolStatus}
             onTransaction={handleToolTransaction}
+            onUpdate={loadData}
+            onSuccess={setSuccess}
+            onError={setError}
             resetForm={resetToolForm}
           />
         )}
@@ -609,12 +699,14 @@ const ToolManagement: React.FC = () => {
                  {activeTab === 'categories' && (
            <CategoriesTab 
              categories={categories}
+             tools={tools}
              showModal={showCategoryModal}
              setShowModal={setShowCategoryModal}
              form={categoryForm}
              setForm={setCategoryForm}
              onSubmit={handleCreateCategory}
              onUpdate={handleUpdateCategory}
+             onDelete={handleDeleteCategory}
              resetForm={resetCategoryForm}
            />
          )}
@@ -631,6 +723,9 @@ const ToolManagement: React.FC = () => {
               setForm={setToolboxForm}
               onSubmit={handleCreateToolbox}
               onUpdate={handleUpdateToolbox}
+              onSoftDelete={handleSoftDeleteToolbox}
+              onRetire={handleRetireToolbox}
+              onReactivate={handleReactivateToolbox}
               resetForm={resetToolboxForm}
             />
           )}

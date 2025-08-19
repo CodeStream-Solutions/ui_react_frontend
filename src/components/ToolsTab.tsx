@@ -6,18 +6,17 @@ import {
   Search, 
   Eye, 
   EyeOff,
-  CheckCircle,
-  XCircle,
   Package,
   Tag,
   Calendar,
   Hash,
   ArrowRight,
-  User,
   Settings,
   AlertTriangle,
+  AlertCircle,
   Image as ImageIcon,
-  X
+  X,
+  XCircle
 } from 'lucide-react';
 import ToolTransactionModal from './ToolTransactionModal';
 import { toolApi } from '../services/api';
@@ -98,6 +97,9 @@ interface ToolsTabProps {
   onSubmit: (e: React.FormEvent) => void;
   onToggleStatus: (toolId: number, currentStatus: boolean) => void;
   onTransaction: (transactionData: any) => Promise<void>;
+  onUpdate?: () => void;
+  onSuccess: (message: string) => void;
+  onError: (message: string) => void;
   resetForm: () => void;
 }
 
@@ -120,6 +122,9 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
   onSubmit,
   onToggleStatus,
   onTransaction,
+  onUpdate,
+  onSuccess,
+  onError,
   resetForm
 }) => {
   const { hasPermission } = useRBAC();
@@ -134,6 +139,17 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
   const [toolDetailsData, setToolDetailsData] = useState<Tool | null>(null);
   const [toolLatestImage, setToolLatestImage] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
+  
+  // Edit tool states
+  const [isEditingTool, setIsEditingTool] = useState(false);
+  const [editToolForm, setEditToolForm] = useState({
+    SerialNumber: '',
+    Name: '',
+    Description: '',
+    PurchaseDate: '',
+    CategoryID: undefined as number | undefined
+  });
+  const [editError, setEditError] = useState('');
 
   const validateDate = (dateString: string): boolean => {
     if (!dateString) return true; // Empty date is valid (optional field)
@@ -141,20 +157,29 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
     // Check format
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(dateString)) {
-      setDateError('Invalid date format. Use YYYY-MM-DD');
+      setDateError('Invalid date format. Please use YYYY-MM-DD format.');
       return false;
     }
     
     // Check if it's a real date
     const date = new Date(dateString);
     if (isNaN(date.getTime())) {
-      setDateError('Invalid date');
+      setDateError('Invalid date. Please enter a valid date.');
       return false;
     }
     
     // Check if it's not in the future
-    if (date > new Date()) {
-      setDateError('Date cannot be in the future');
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+    if (date > today) {
+      setDateError('Purchase date cannot be in the future.');
+      return false;
+    }
+    
+    // Check if it's not too far in the past (before 1900)
+    const minDate = new Date('1900-01-01');
+    if (date < minDate) {
+      setDateError('Purchase date cannot be before 1900.');
       return false;
     }
     
@@ -165,6 +190,9 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
   const handleTransactionClick = (tool: Tool) => {
     setSelectedTool(tool);
     setShowTransactionModal(true);
+    // Clear any existing messages when opening transaction modal
+    onSuccess('');
+    onError('');
   };
 
   const handleToolDetailsClick = async (tool: Tool) => {
@@ -199,6 +227,9 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
     setNewStatusId(0);
     setStatusChangeComments('');
     setShowStatusChangeModal(true);
+    // Clear any existing messages when opening status change modal
+    onSuccess('');
+    onError('');
   };
 
   const handleStatusChange = async () => {
@@ -223,7 +254,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
       window.location.reload(); // Simple refresh for now
     } catch (error: any) {
       console.error('Failed to change tool status:', error);
-      alert('Failed to change tool status: ' + (error.response?.data?.detail || error.message));
+      onError('Failed to change tool status: ' + (error.response?.data?.detail || error.message));
     }
   };
 
@@ -232,6 +263,95 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
     setStatusChangeTool(null);
     setNewStatusId(0);
     setStatusChangeComments('');
+  };
+
+  const handleEditToolClick = () => {
+    if (!toolDetailsData) return;
+    
+    setEditToolForm({
+      SerialNumber: toolDetailsData.SerialNumber,
+      Name: toolDetailsData.Name,
+      Description: toolDetailsData.Description || '',
+      PurchaseDate: toolDetailsData.PurchaseDate ? new Date(toolDetailsData.PurchaseDate).toISOString().split('T')[0] : '',
+      CategoryID: toolDetailsData.CategoryID || undefined
+    });
+    setEditError('');
+    setIsEditingTool(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingTool(false);
+    setEditError('');
+    setEditToolForm({
+      SerialNumber: '',
+      Name: '',
+      Description: '',
+      PurchaseDate: '',
+      CategoryID: undefined
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!toolDetailsData) return;
+    
+    try {
+      setDateError(null);
+      setEditError('');
+      
+      // Validate date if provided
+      if (editToolForm.PurchaseDate && !validateDate(editToolForm.PurchaseDate)) {
+        return; // validateDate already sets the appropriate error message
+      }
+      
+      // Prepare update data - only include changed fields
+      const updateData: any = {};
+      
+      if (editToolForm.SerialNumber !== toolDetailsData.SerialNumber) {
+        updateData.SerialNumber = editToolForm.SerialNumber;
+      }
+      if (editToolForm.Name !== toolDetailsData.Name) {
+        updateData.Name = editToolForm.Name;
+      }
+      if (editToolForm.Description !== (toolDetailsData.Description || '')) {
+        updateData.Description = editToolForm.Description || null;
+      }
+      if (editToolForm.PurchaseDate !== (toolDetailsData.PurchaseDate ? new Date(toolDetailsData.PurchaseDate).toISOString().split('T')[0] : '')) {
+        updateData.PurchaseDate = editToolForm.PurchaseDate ? new Date(editToolForm.PurchaseDate).toISOString() : null;
+      }
+      if (editToolForm.CategoryID !== (toolDetailsData.CategoryID || undefined)) {
+        updateData.CategoryID = editToolForm.CategoryID || null;
+      }
+      
+      // Only make API call if there are changes
+      if (Object.keys(updateData).length > 0) {
+        await toolApi.updateTool(toolDetailsData.ToolID, updateData);
+        
+        // Try to refresh the tool data, but don't fail if it doesn't work
+        try {
+          const updatedTool = await toolApi.getTool(toolDetailsData.ToolID);
+          setToolDetailsData(updatedTool.data);
+        } catch (refreshError) {
+          console.warn('Failed to refresh tool data after update:', refreshError);
+          // Continue anyway - the update was successful
+        }
+        
+        // Refresh the tools list by calling parent's onUpdate if available
+        if (onUpdate) {
+          onUpdate();
+        }
+        
+        setIsEditingTool(false);
+        onSuccess('Tool updated successfully!');
+      } else {
+        // No changes were made
+        setIsEditingTool(false);
+        onSuccess('No changes were made.');
+      }
+      
+    } catch (error: any) {
+      console.error('Failed to update tool:', error);
+      setEditError('Failed to update tool: ' + (error.response?.data?.detail || error.message));
+    }
   };
 
   // Clear date error when form is reset
@@ -258,7 +378,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Search by name, serial, or description..."
+                  placeholder="Search by name, serial, description, category, or toolbox..."
                 />
               </div>
             </div>
@@ -509,6 +629,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                   onClick={() => {
                     setShowModal(false);
                     setDateError(null);
+                    resetForm();
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
@@ -565,6 +686,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                       validateDate(e.target.value);
                     }}
                     onBlur={(e) => validateDate(e.target.value)}
+                    min="1900-01-01"
                     max={new Date().toISOString().split('T')[0]} // Prevent future dates
                     className={`mt-1 block w-full rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
                       dateError ? 'border-red-300' : 'border-gray-300'
@@ -634,6 +756,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                     onClick={() => {
                       setShowModal(false);
                       setDateError(null);
+                      resetForm();
                     }}
                     className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
                   >
@@ -702,7 +825,13 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                     >
                       <option value={0}>Select Status</option>
                       {statusTypes
-                        .filter(status => ['Broken', 'Lost'].includes(status.Name))
+                        .filter(status => {
+                          // Lost tools can only be found (checked in), not changed to broken
+                          if (statusChangeTool?.status?.Name === 'Lost') {
+                            return false; // No status changes allowed for lost tools
+                          }
+                          return ['Broken', 'Lost'].includes(status.Name);
+                        })
                         .map(status => (
                           <option key={status.StatusTypeID} value={status.StatusTypeID}>
                             {status.Name}
@@ -710,10 +839,19 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                         ))}
                     </select>
                     <div className="mt-2 text-xs text-gray-600">
-                      <p><strong>Broken:</strong> Tool will be moved to warehouse for repair</p>
-                      <p><strong>Lost:</strong> Tool remains with employee for accountability</p>
-                      {statusChangeTool?.status?.Name === 'In Use' && (
-                        <p className="text-blue-600 mt-1"><strong>Note:</strong> Tool can be marked Lost/Broken while in use</p>
+                      {statusChangeTool?.status?.Name === 'Lost' ? (
+                        <p className="text-red-600 mt-1">
+                          <strong>Lost tools cannot be changed to other statuses.</strong> 
+                          Use "Check In" transaction when the tool is found.
+                        </p>
+                      ) : (
+                        <>
+                          <p><strong>Broken:</strong> Tool will be moved to warehouse for repair</p>
+                          <p><strong>Lost:</strong> Tool remains with employee for accountability</p>
+                          {statusChangeTool?.status?.Name === 'In Use' && (
+                            <p className="text-blue-600 mt-1"><strong>Note:</strong> Tool can be marked Lost/Broken while in use</p>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -777,56 +915,167 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                 {/* Left Column - Tool Details */}
                 <div className="space-y-4">
                   <div>
-                    <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Basic Information</h4>
-                    <div className="mt-2 space-y-2">
-                      <div>
-                        <span className="text-sm font-medium text-gray-900">Name:</span>
-                        <span className="ml-2 text-sm text-gray-700">{toolDetailsData.Name}</span>
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-gray-900">Serial Number:</span>
-                        <span className="ml-2 text-sm text-gray-700">{toolDetailsData.SerialNumber}</span>
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-gray-900">Status:</span>
-                        <span className={`ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          toolDetailsData.status?.Name === 'Available' ? 'bg-green-100 text-green-800' :
-                          toolDetailsData.status?.Name === 'In Use' ? 'bg-blue-100 text-blue-800' :
-                          toolDetailsData.status?.Name === 'Maintenance' ? 'bg-yellow-100 text-yellow-800' :
-                          toolDetailsData.status?.Name === 'Lost' ? 'bg-red-100 text-red-800' :
-                          toolDetailsData.status?.Name === 'Broken' ? 'bg-orange-100 text-orange-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {toolDetailsData.status?.Name || 'Unknown'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-gray-900">Location:</span>
-                        <span className="ml-2 text-sm text-gray-700">
-                          {toolDetailsData.toolbox ? toolDetailsData.toolbox.Name : 'Warehouse'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-gray-900">Category:</span>
-                        <span className="ml-2 text-sm text-gray-700">
-                          {toolDetailsData.category ? toolDetailsData.category.Name : 'Uncategorized'}
-                        </span>
-                      </div>
-                      {toolDetailsData.PurchaseDate && (
+                    <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider">
+                      {isEditingTool ? 'Edit Tool Information' : 'Basic Information'}
+                    </h4>
+                    
+                    {isEditingTool ? (
+                      /* Edit Form */
+                      <div className="mt-2 space-y-4">
+                        {/* Edit Error Alert */}
+                        {editError && (
+                          <div className="rounded-md bg-red-50 p-4">
+                            <div className="flex">
+                              <AlertCircle className="h-5 w-5 text-red-400" />
+                              <div className="ml-3">
+                                <h3 className="text-sm font-medium text-red-800">{editError}</h3>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
                         <div>
-                          <span className="text-sm font-medium text-gray-900">Purchase Date:</span>
-                          <span className="ml-2 text-sm text-gray-700">
-                            {new Date(toolDetailsData.PurchaseDate).toLocaleDateString()}
+                          <label className="block text-sm font-medium text-gray-700">Tool Name</label>
+                          <input
+                            type="text"
+                            value={editToolForm.Name}
+                            onChange={(e) => setEditToolForm({...editToolForm, Name: e.target.value})}
+                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            required
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Serial Number</label>
+                          <input
+                            type="text"
+                            value={editToolForm.SerialNumber}
+                            onChange={(e) => setEditToolForm({...editToolForm, SerialNumber: e.target.value})}
+                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            required
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Category</label>
+                          <select
+                            value={editToolForm.CategoryID || ''}
+                            onChange={(e) => setEditToolForm({...editToolForm, CategoryID: e.target.value ? parseInt(e.target.value) : undefined})}
+                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                          >
+                            <option value="">No Category</option>
+                            {categories.map(category => (
+                              <option key={category.CategoryID} value={category.CategoryID}>
+                                {category.Name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Purchase Date</label>
+                          <input
+                            type="date"
+                            value={editToolForm.PurchaseDate}
+                            onChange={(e) => setEditToolForm({...editToolForm, PurchaseDate: e.target.value})}
+                            min="1900-01-01"
+                            max={new Date().toISOString().split('T')[0]}
+                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                          />
+                          {dateError && (
+                            <p className="mt-1 text-sm text-red-600">{dateError}</p>
+                          )}
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Description</label>
+                          <textarea
+                            value={editToolForm.Description}
+                            onChange={(e) => setEditToolForm({...editToolForm, Description: e.target.value})}
+                            rows={3}
+                            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            placeholder="Optional description..."
+                          />
+                        </div>
+                        
+                        {/* Read-only fields during edit */}
+                        <div className="pt-2 border-t border-gray-200">
+                          <p className="text-xs text-gray-500 mb-2">Read-only information:</p>
+                          <div className="space-y-1">
+                            <div>
+                              <span className="text-xs font-medium text-gray-600">Status:</span>
+                              <span className={`ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                toolDetailsData.status?.Name === 'Available' ? 'bg-green-100 text-green-800' :
+                                toolDetailsData.status?.Name === 'In Use' ? 'bg-blue-100 text-blue-800' :
+                                toolDetailsData.status?.Name === 'Maintenance' ? 'bg-yellow-100 text-yellow-800' :
+                                toolDetailsData.status?.Name === 'Lost' ? 'bg-red-100 text-red-800' :
+                                toolDetailsData.status?.Name === 'Broken' ? 'bg-orange-100 text-orange-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {toolDetailsData.status?.Name || 'Unknown'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-xs font-medium text-gray-600">Location:</span>
+                              <span className="ml-2 text-xs text-gray-500">
+                                {toolDetailsData.toolbox ? toolDetailsData.toolbox.Name : 'Warehouse'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Display Mode */
+                      <div className="mt-2 space-y-2">
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">Name:</span>
+                          <span className="ml-2 text-sm text-gray-700">{toolDetailsData.Name}</span>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">Serial Number:</span>
+                          <span className="ml-2 text-sm text-gray-700">{toolDetailsData.SerialNumber}</span>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">Status:</span>
+                          <span className={`ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            toolDetailsData.status?.Name === 'Available' ? 'bg-green-100 text-green-800' :
+                            toolDetailsData.status?.Name === 'In Use' ? 'bg-blue-100 text-blue-800' :
+                            toolDetailsData.status?.Name === 'Maintenance' ? 'bg-yellow-100 text-yellow-800' :
+                            toolDetailsData.status?.Name === 'Lost' ? 'bg-red-100 text-red-800' :
+                            toolDetailsData.status?.Name === 'Broken' ? 'bg-orange-100 text-orange-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {toolDetailsData.status?.Name || 'Unknown'}
                           </span>
                         </div>
-                      )}
-                      {toolDetailsData.Description && (
                         <div>
-                          <span className="text-sm font-medium text-gray-900">Description:</span>
-                          <p className="mt-1 text-sm text-gray-700">{toolDetailsData.Description}</p>
+                          <span className="text-sm font-medium text-gray-900">Location:</span>
+                          <span className="ml-2 text-sm text-gray-700">
+                            {toolDetailsData.toolbox ? toolDetailsData.toolbox.Name : 'Warehouse'}
+                          </span>
                         </div>
-                      )}
-                    </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">Category:</span>
+                          <span className="ml-2 text-sm text-gray-700">
+                            {toolDetailsData.category ? toolDetailsData.category.Name : 'Uncategorized'}
+                          </span>
+                        </div>
+                        {toolDetailsData.PurchaseDate && (
+                          <div>
+                            <span className="text-sm font-medium text-gray-900">Purchase Date:</span>
+                            <span className="ml-2 text-sm text-gray-700">
+                              {new Date(toolDetailsData.PurchaseDate).toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
+                        {toolDetailsData.Description && (
+                          <div>
+                            <span className="text-sm font-medium text-gray-900">Description:</span>
+                            <p className="mt-1 text-sm text-gray-700">{toolDetailsData.Description}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -873,12 +1122,25 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
               {/* Actions */}
               <div className="flex justify-end space-x-3 mt-6">
                 <button
-                  onClick={() => setShowToolDetailsModal(false)}
+                  onClick={() => {
+                    setShowToolDetailsModal(false);
+                    setIsEditingTool(false);
+                    setEditError('');
+                  }}
                   className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
                   Close
                 </button>
-                {hasPermission('create_transactions') && toolDetailsData.IsActive && (
+                {hasPermission('update_tools') && toolDetailsData.IsActive && !isEditingTool && (
+                  <button
+                    onClick={handleEditToolClick}
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+                  >
+                    <Settings className="h-4 w-4 mr-1 inline" />
+                    Edit Tool
+                  </button>
+                )}
+                {hasPermission('create_transactions') && toolDetailsData.IsActive && !isEditingTool && (
                   <button
                     onClick={() => {
                       setShowToolDetailsModal(false);
@@ -888,6 +1150,22 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                   >
                     Create Transaction
                   </button>
+                )}
+                {isEditingTool && (
+                  <>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveEdit}
+                      className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+                    >
+                      Save Changes
+                    </button>
+                  </>
                 )}
               </div>
             </div>

@@ -130,7 +130,9 @@ export const toolApi = {
   getToolbox: (toolboxId: number) => api.get(`/tools/toolboxes/${toolboxId}`),
   createToolbox: (data: any) => api.post('/tools/toolboxes/', data),
   updateToolbox: (toolboxId: number, data: any) => api.put(`/tools/toolboxes/${toolboxId}`, data),
-  deleteToolbox: (toolboxId: number) => api.delete(`/tools/toolboxes/${toolboxId}`),
+  softDeleteToolbox: (toolboxId: number) => api.put(`/tools/toolboxes/${toolboxId}/soft-delete`),
+  retireToolbox: (toolboxId: number) => api.put(`/tools/toolboxes/${toolboxId}/retire`),
+  reactivateToolbox: (toolboxId: number) => api.put(`/tools/toolboxes/${toolboxId}/reactivate`),
 
   // Transactions
   getTransactions: () => api.get('/transactions/with-details'),
