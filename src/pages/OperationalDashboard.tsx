@@ -95,7 +95,7 @@ interface PendingActions {
 
 const OperationalDashboard: React.FC = () => {
   const { user } = useAuth();
-  const { hasPermission } = useRBAC();
+  const { hasPermission, loading: rbacLoading } = useRBAC();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -112,6 +112,11 @@ const OperationalDashboard: React.FC = () => {
     try {
       setRefreshing(true);
       setError('');
+      
+      // Wait for RBAC to finish loading before checking permissions
+      if (rbacLoading) {
+        return;
+      }
       
       if (!hasPermission('view_dashboard')) {
         setError('You do not have permission to view the dashboard');
@@ -153,7 +158,7 @@ const OperationalDashboard: React.FC = () => {
     // Auto-refresh every 30 seconds
     const interval = setInterval(fetchDashboardData, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [rbacLoading]); // Re-run when RBAC loading changes
 
   const getActivityIcon = (type: string) => {
     switch (type.toLowerCase()) {
@@ -347,9 +352,14 @@ const OperationalDashboard: React.FC = () => {
                                     <p className="text-sm text-gray-900">
                                       <span className="font-medium">{activity.tool_name}</span>
                                       <span className="text-gray-500"> ({activity.serial_number})</span>
+                                      {!activity.tool_is_active && (
+                                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                          Retired
+                                        </span>
+                                      )}
                                     </p>
                                     <p className="text-sm text-gray-500">
-                                      {activity.transaction_type} → {activity.to_status}
+                                      {activity.activity_description || `${activity.transaction_type} → ${activity.to_status}`}
                                     </p>
                                     <p className="text-xs text-gray-400">by {activity.employee_name}</p>
                                   </div>

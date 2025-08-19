@@ -50,11 +50,19 @@ interface RBACProviderProps {
 }
 
 export const RBACProvider: React.FC<RBACProviderProps> = ({ children }) => {
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated, token, loading: authLoading } = useAuth();
   const [userPermissions, setUserPermissions] = useState<UserPermissions | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchUserPermissions = async () => {
+    // Wait for auth context to finish loading
+    if (authLoading) {
+      return;
+    }
+
+    // Set loading to true when we start fetching
+    setLoading(true);
+
     if (!isAuthenticated || !token) {
       setUserPermissions(null);
       setLoading(false);
@@ -74,7 +82,7 @@ export const RBACProvider: React.FC<RBACProviderProps> = ({ children }) => {
 
   useEffect(() => {
     fetchUserPermissions();
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated, token, authLoading]); // Also depend on authLoading
 
   const hasPermission = (permission: string): boolean => {
     if (!userPermissions) return false;

@@ -149,7 +149,7 @@ export const toolApi = {
 
   // Transaction Operations
   checkoutTool: (data: any) => api.post('/transactions/checkout', data),
-  checkinTool: (data: any) => api.post('/transactions/checkin', data),
+  checkinTool: (data: any) => api.post('/transactions/check-in', data),
   transferTool: (data: any) => api.post('/transactions/transfer', data),
   sendToolForMaintenance: (data: any) => api.post('/transactions/maintenance', data),
   returnFromMaintenance: (data: any) => api.post('/transactions/return-from-maintenance', data),

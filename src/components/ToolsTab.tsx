@@ -127,8 +127,13 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
   onError,
   resetForm
 }) => {
-  const { hasPermission } = useRBAC();
+  const { hasPermission, isAdmin, isWarehouseManager } = useRBAC();
   const [showTransactionModal, setShowTransactionModal] = useState(false);
+  
+  // Helper function to check if user can manage tool transactions
+  const canManageToolTransactions = () => {
+    return isAdmin() || isWarehouseManager() || hasPermission('create_transactions');
+  };
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [showStatusChangeModal, setShowStatusChangeModal] = useState(false);
   const [statusChangeTool, setStatusChangeTool] = useState<Tool | null>(null);
@@ -548,7 +553,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
-                      {hasPermission('create_transactions') && (
+                      {canManageToolTransactions() && (
                         <button
                           onClick={() => tool.IsActive ? handleTransactionClick(tool) : null}
                           className={`${
@@ -562,6 +567,10 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                                return "Tool is inactive - activate to enable transactions";
                              }
                              
+                             if (!canManageToolTransactions()) {
+                               return "Admin or Warehouse Manager access required for tool transactions";
+                             }
+                             
                              const isInWarehouse = tool.ToolboxID === 1 || !tool.ToolboxID;
                              const isInUse = tool.status?.Name === 'In Use';
                              const isInMaintenance = tool.status?.Name === 'Maintenance';
@@ -569,21 +578,21 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                              const isBroken = tool.status?.Name === 'Broken';
                              
                              if (isLost) {
-                               return "Check In Tool (When Found)";
+                               return "Check In Tool (When Found) - Admin/Warehouse Manager Only";
                              } else if (isBroken) {
-                               return "Send for Maintenance or Retire (Broken)";
+                               return "Send for Maintenance or Retire (Broken) - Admin/Warehouse Manager Only";
                              } else if (isInWarehouse && !isInUse && !isInMaintenance) {
-                               return "Check Out Tool";
+                               return "Check Out Tool - Admin/Warehouse Manager Only";
                              } else if (!isInWarehouse && isInUse && !isInMaintenance) {
-                               return "Check In Tool";
+                               return "Check In Tool - Admin/Warehouse Manager Only";
                              } else if (!isInWarehouse && !isInMaintenance) {
-                               return "Transfer Tool";
+                               return "Transfer Tool - Admin/Warehouse Manager Only";
                              } else if (!isInMaintenance && !isInUse) {
-                               return "Send for Maintenance";
+                               return "Send for Maintenance - Admin/Warehouse Manager Only";
                              } else if (isInUse) {
-                               return "Check In First (In Use)";
+                               return "Check In First (In Use) - Admin/Warehouse Manager Only";
                              } else {
-                               return "Manage Tool";
+                               return "Manage Tool - Admin/Warehouse Manager Only";
                              }
                            })()}
                         >
@@ -1140,13 +1149,14 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                     Edit Tool
                   </button>
                 )}
-                {hasPermission('create_transactions') && toolDetailsData.IsActive && !isEditingTool && (
+                {canManageToolTransactions() && toolDetailsData.IsActive && !isEditingTool && (
                   <button
                     onClick={() => {
                       setShowToolDetailsModal(false);
                       handleTransactionClick(toolDetailsData);
                     }}
                     className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                    title="Manage tool transactions (Admin/Warehouse Manager only)"
                   >
                     Create Transaction
                   </button>

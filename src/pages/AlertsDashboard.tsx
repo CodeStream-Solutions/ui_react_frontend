@@ -49,7 +49,7 @@ interface AlertDetails {
 
 const AlertsDashboard: React.FC = () => {
   const { user } = useAuth();
-  const { hasPermission } = useRBAC();
+  const { hasPermission, loading: rbacLoading } = useRBAC();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -68,6 +68,11 @@ const AlertsDashboard: React.FC = () => {
     try {
       setRefreshing(true);
       setError('');
+      
+      // Wait for RBAC to finish loading before checking permissions
+      if (rbacLoading) {
+        return;
+      }
       
       if (!hasPermission('view_dashboard')) {
         setError('You do not have permission to view the dashboard');
@@ -105,7 +110,7 @@ const AlertsDashboard: React.FC = () => {
     // Auto-refresh every 60 seconds for alerts
     const interval = setInterval(fetchAlertsData, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [rbacLoading]); // Re-run when RBAC loading changes
 
   const getAlertIcon = (type: string) => {
     switch (type) {

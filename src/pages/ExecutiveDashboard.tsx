@@ -93,7 +93,7 @@ interface StrategicInsights {
 }
 
 const ExecutiveDashboard: React.FC = () => {
-  const { hasPermission } = useRBAC();
+  const { hasPermission, loading: rbacLoading } = useRBAC();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -107,6 +107,11 @@ const ExecutiveDashboard: React.FC = () => {
     try {
       setRefreshing(true);
       setError('');
+      
+      // Wait for RBAC to finish loading before checking permissions
+      if (rbacLoading) {
+        return;
+      }
       
       if (!hasPermission('view_dashboard')) {
         setError('You do not have permission to view the dashboard');
@@ -132,7 +137,7 @@ const ExecutiveDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchExecutiveData();
-  }, []);
+  }, [rbacLoading]); // Re-run when RBAC loading changes
 
   const formatChartData = () => {
     if (!executiveSummary) return { categoryData: [], trendData: [], utilizationData: [] };
@@ -146,10 +151,29 @@ const ExecutiveDashboard: React.FC = () => {
     }));
 
     // Transaction trends for line chart
-    const trendData = executiveSummary.transaction_trends.map(trend => ({
-      week: new Date(trend.week).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      transactions: trend.transaction_count
-    }));
+    const trendData = executiveSummary.transaction_trends.map(trend => {
+      if (!trend.week) {
+        return {
+          week: 'Unknown',
+          transactions: trend.transaction_count
+        };
+      }
+      
+      try {
+        // Parse the YYYY-MM-DD format and create a proper date
+        const date = new Date(trend.week + 'T00:00:00');
+        return {
+          week: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          transactions: trend.transaction_count
+        };
+      } catch (error) {
+        console.error('Error parsing date:', trend.week, error);
+        return {
+          week: 'Invalid',
+          transactions: trend.transaction_count
+        };
+      }
+    });
 
     // Utilization by category for bar chart
     const utilizationData = executiveSummary.category_distribution.map(cat => ({

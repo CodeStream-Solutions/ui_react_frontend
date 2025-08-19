@@ -58,7 +58,7 @@ interface EmployeeActivity {
 
 const PerformanceDashboard: React.FC = () => {
   const { user } = useAuth();
-  const { hasPermission } = useRBAC();
+  const { hasPermission, loading: rbacLoading } = useRBAC();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -72,6 +72,11 @@ const PerformanceDashboard: React.FC = () => {
     try {
       setRefreshing(true);
       setError('');
+      
+      // Wait for RBAC to finish loading before checking permissions
+      if (rbacLoading) {
+        return;
+      }
       
       if (!hasPermission('view_dashboard')) {
         setError('You do not have permission to view the dashboard');
@@ -92,10 +97,10 @@ const PerformanceDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchPerformanceData();
-  }, [selectedPeriod]);
+  }, [selectedPeriod, rbacLoading]); // Re-run when RBAC loading changes
 
   const formatChartData = () => {
-    if (!utilizationData) return { toolUsageData: [], employeeData: [], toolEfficiencyData: [] };
+    if (!utilizationData) return { toolUsageData: [], employeeData: [] };
 
     // Tool usage chart data
     const toolUsageData = utilizationData.most_used_tools.map((tool, index) => ({
@@ -112,19 +117,10 @@ const PerformanceDashboard: React.FC = () => {
       productivity_score: Math.round((emp.transaction_count / emp.unique_tools_used) * 10) / 10
     }));
 
-    // Tool efficiency comparison (most vs least used)
-    const mostUsedAvg = utilizationData.most_used_tools.reduce((sum, tool) => sum + tool.transaction_count, 0) / utilizationData.most_used_tools.length;
-    const leastUsedAvg = utilizationData.least_used_tools.reduce((sum, tool) => sum + tool.transaction_count, 0) / utilizationData.least_used_tools.length;
-    
-    const toolEfficiencyData = [
-      { category: 'Most Used Tools', average_usage: Math.round(mostUsedAvg * 10) / 10, color: '#10b981' },
-      { category: 'Least Used Tools', average_usage: Math.round(leastUsedAvg * 10) / 10, color: '#f59e0b' }
-    ];
-
-    return { toolUsageData, employeeData, toolEfficiencyData };
+    return { toolUsageData, employeeData };
   };
 
-  const { toolUsageData, employeeData, toolEfficiencyData } = formatChartData();
+  const { toolUsageData, employeeData } = formatChartData();
 
   const calculateKPIs = () => {
     if (!utilizationData) return { totalTransactions: 0, avgToolsPerEmployee: 0, utilizationTrend: 0, topPerformerGain: 0, topPerformerName: '' };
@@ -371,37 +367,7 @@ const PerformanceDashboard: React.FC = () => {
           </div>
 
           {/* Detailed Analytics */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            {/* Tool Efficiency Comparison */}
-            <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                  <Package className="h-5 w-5 text-orange-600 mr-2" />
-                  Tool Efficiency
-                </h3>
-              </div>
-              <div className="p-6">
-                <ResponsiveContainer width="100%" height={200}>
-                  <PieChart>
-                    <Pie
-                      data={toolEfficiencyData}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="average_usage"
-                      label={({ category, average_usage }) => `${category}: ${average_usage}`}
-                    >
-                      {toolEfficiencyData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
             {/* Most Used Tools List */}
             <div className="bg-white shadow-sm rounded-lg border border-gray-200">
