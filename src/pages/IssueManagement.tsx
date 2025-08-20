@@ -160,8 +160,8 @@ const IssueManagement: React.FC = () => {
 
   const fetchAvailableUsers = async () => {
     try {
-      // First try to get all users and filter for active ones
-      const response = await api.get('/users/');
+      // Get only admin users for issue assignment
+      const response = await api.get('/users/admin');
       
       // Handle both array and object responses
       let users = [];
@@ -173,7 +173,7 @@ const IssueManagement: React.FC = () => {
         users = response.data || [];
       }
       
-      // Map to our UserSummary interface and exclude system user, include only active users
+      // Map to our UserSummary interface
       const mappedUsers = users
         .filter((user: any) => {
           const username = user.Username || user.username;
@@ -189,7 +189,7 @@ const IssueManagement: React.FC = () => {
       
       setAvailableUsers(mappedUsers);
     } catch (err: any) {
-      console.error('Error fetching users:', err);
+      console.error('Error fetching admin users:', err);
       setAvailableUsers([]);
     }
   };

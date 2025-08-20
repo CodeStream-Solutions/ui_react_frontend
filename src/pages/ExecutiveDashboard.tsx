@@ -187,6 +187,8 @@ const ExecutiveDashboard: React.FC = () => {
   };
 
   const { categoryData, trendData, utilizationData } = formatChartData();
+  
+
 
   const getTrendIcon = (trend: string, rate: number) => {
     if (trend === 'Growing' || rate > 0) {
@@ -358,25 +360,60 @@ const ExecutiveDashboard: React.FC = () => {
                 </h3>
               </div>
               <div className="p-6">
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={categoryData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
+                                 <ResponsiveContainer width="100%" height={350}>
+                   <PieChart>
+                     <Pie
+                       data={categoryData}
+                       cx="50%"
+                       cy="50%"
+                       labelLine={false}
+                       label={({ name, percent }) => {
+                         // Only show labels for slices that are large enough
+                         if ((percent || 0) > 0.05) {
+                           return `${name}: ${((percent || 0) * 100).toFixed(0)}%`;
+                         }
+                         return '';
+                       }}
+                       outerRadius={70}
+                       innerRadius={15}
+                       fill="#8884d8"
+                       dataKey="value"
+                       paddingAngle={1}
+                     >
+                       {categoryData.map((entry, index) => (
+                         <Cell key={`cell-${index}`} fill={entry.fill} />
+                       ))}
+                     </Pie>
+                     <Tooltip 
+                       formatter={(value, name) => [`${value} tools`, name]}
+                       labelFormatter={(label) => `Category: ${label}`}
+                       contentStyle={{
+                         backgroundColor: 'white',
+                         border: '1px solid #e5e7eb',
+                         borderRadius: '6px',
+                         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                       }}
+                     />
+                   </PieChart>
+                 </ResponsiveContainer>
+                
+                {/* Legend */}
+                <div className="mt-3">
+                  <div className="max-h-24 overflow-y-auto">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 text-xs">
                       {categoryData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                        <div key={index} className="flex items-center space-x-2 py-0.5 px-1 rounded hover:bg-gray-50">
+                          <div 
+                            className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
+                            style={{ backgroundColor: entry.fill }}
+                          />
+                          <span className="truncate font-medium">{entry.name}</span>
+                          <span className="text-gray-500 flex-shrink-0">({entry.value})</span>
+                        </div>
                       ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => [`${value} tools`, 'Count']} />
-                  </PieChart>
-                </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -388,22 +425,23 @@ const ExecutiveDashboard: React.FC = () => {
                   Transaction Trends (12 Weeks)
                 </h3>
               </div>
-              <div className="p-6">
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="week" fontSize={12} />
-                    <YAxis />
-                    <Tooltip />
-                    <Area 
-                      type="monotone" 
-                      dataKey="transactions" 
-                      stroke="#10b981" 
-                      fill="#10b981"
-                      fillOpacity={0.6}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                             <div className="p-6 h-96">
+                                 <ResponsiveContainer width="100%" height="100%">
+                   <AreaChart data={trendData} margin={{ top: 10, right: 15, left: 15, bottom: 10 }}>
+                                           <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="week" fontSize={12} />
+                      <YAxis domain={[0, 'dataMax + 10']} />
+                                           <Tooltip />
+                      <Area 
+                        type="monotone" 
+                        dataKey="transactions" 
+                        stroke="#10b981" 
+                        strokeWidth={2}
+                        fill="#10b981"
+                        fillOpacity={0.3}
+                      />
+                   </AreaChart>
+                 </ResponsiveContainer>
               </div>
             </div>
           </div>
