@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import { RBACProvider } from './contexts/RBACContext';
+import { RBACProvider, useRBAC } from './contexts/RBACContext';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import OTPVerification from './pages/OTPVerification';
@@ -17,6 +17,19 @@ import ToolManagement from './pages/ToolManagement';
 import IssueManagement from './pages/IssueManagement';
 import ProtectedRoute from './components/ProtectedRoute';
 
+// Component to handle default route based on user role
+const DefaultRoute = () => {
+  const { isAdmin, isWarehouseManager } = useRBAC();
+  
+  if (isAdmin()) {
+    return <Navigate to="/dashboard" replace />;
+  } else if (isWarehouseManager()) {
+    return <Navigate to="/tool-management" replace />;
+  } else {
+    return <Navigate to="/employee-dashboard" replace />;
+  }
+};
+
 function App() {
   return (
     <AuthProvider>
@@ -31,63 +44,70 @@ function App() {
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               
-              {/* Protected routes */}
+              {/* Employee-only route */}
+              <Route path="/employee-dashboard" element={
+                <ProtectedRoute employeeOnly={true}>
+                  <EmployeeDashboard />
+                </ProtectedRoute>
+              } />
+
+              {/* Warehouse Manager-only route */}
+              <Route path="/tool-management" element={
+                <ProtectedRoute warehouseManagerOnly={true}>
+                  <ToolManagement />
+                </ProtectedRoute>
+              } />
+
+              {/* Admin dashboard routes - accessible by admins */}
               <Route path="/dashboard" element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['admin']}>
                   <OperationalDashboard />
                 </ProtectedRoute>
               } />
 
               <Route path="/performance-dashboard" element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['admin']}>
                   <PerformanceDashboard />
                 </ProtectedRoute>
               } />
 
               <Route path="/alerts-dashboard" element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['admin']}>
                   <AlertsDashboard />
                 </ProtectedRoute>
               } />
 
-              <Route path="/employee-dashboard" element={
-                <ProtectedRoute>
-                  <EmployeeDashboard />
-                </ProtectedRoute>
-              } />
-
               <Route path="/executive-dashboard" element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['admin']}>
                   <ExecutiveDashboard />
                 </ProtectedRoute>
               } />
               
+              {/* Admin management routes - accessible by admins */}
               <Route path="/account-management" element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['admin']}>
                   <AccountManagement />
                 </ProtectedRoute>
               } />
               
               <Route path="/employee-management" element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['admin']}>
                   <EmployeeManagement />
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/tool-management" element={
-                <ProtectedRoute>
-                  <ToolManagement />
                 </ProtectedRoute>
               } />
 
               <Route path="/issue-management" element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['admin']}>
                   <IssueManagement />
                 </ProtectedRoute>
               } />
 
-              {/* Default redirect */}
-              <Route path="/" element={<Navigate to="/employee-dashboard" replace />} />
+              {/* Default redirect - based on user role */}
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <DefaultRoute />
+                </ProtectedRoute>
+              } />
             </Routes>
           </div>
         </Router>

@@ -45,6 +45,21 @@ export const useRBAC = () => {
   return context;
 };
 
+// Helper function to decode JWT token
+const decodeJWT = (token: string) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    console.error('Error decoding JWT token:', error);
+    return null;
+  }
+};
+
 interface RBACProviderProps {
   children: ReactNode;
 }
@@ -74,7 +89,34 @@ export const RBACProvider: React.FC<RBACProviderProps> = ({ children }) => {
       setUserPermissions(response.data);
     } catch (error) {
       console.error('Failed to fetch user permissions:', error);
-      setUserPermissions(null);
+      
+      // Fallback: decode JWT token to get role information
+      const decodedToken = decodeJWT(token);
+      if (decodedToken && decodedToken.roles) {
+        const roles = decodedToken.roles;
+        const isAdmin = roles.includes('Admin');
+        const isWarehouseManager = roles.includes('Warehouse Manager');
+        
+        // Create fallback permissions object
+        const fallbackPermissions: UserPermissions = {
+          user_id: decodedToken.user_id,
+          username: decodedToken.username,
+          roles: roles,
+          permissions: [], // We don't have permissions from JWT, but we have roles
+          is_admin: isAdmin,
+          is_warehouse_manager: isWarehouseManager,
+          role_details: roles.map((role: string, index: number) => ({
+            role_id: index + 1,
+            role_name: role,
+            role_description: `${role} role`,
+            permissions: []
+          }))
+        };
+        
+        setUserPermissions(fallbackPermissions);
+      } else {
+        setUserPermissions(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -100,11 +142,13 @@ export const RBACProvider: React.FC<RBACProviderProps> = ({ children }) => {
   };
 
   const isAdmin = (): boolean => {
-    return userPermissions?.is_admin || false;
+    const result = userPermissions?.is_admin || false;
+    return result;
   };
 
   const isWarehouseManager = (): boolean => {
-    return userPermissions?.is_warehouse_manager || false;
+    const result = userPermissions?.is_warehouse_manager || false;
+    return result;
   };
 
   const refreshPermissions = async () => {
