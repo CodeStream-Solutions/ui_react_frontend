@@ -374,7 +374,7 @@ const PerformanceDashboard: React.FC = () => {
               <div className="px-6 py-4 border-b border-gray-200">
                 <h3 className="text-lg font-medium text-gray-900 flex items-center">
                   <TrendingUp className="h-5 w-5 text-blue-600 mr-2" />
-                  Top Performers
+                  Top Used Tools
                 </h3>
               </div>
               <div className="p-6">
@@ -395,12 +395,12 @@ const PerformanceDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Least Used Tools (Optimization Opportunities) */}
+            {/* Least Used Tools (Underutilized Tools) */}
             <div className="bg-white shadow-sm rounded-lg border border-gray-200">
               <div className="px-6 py-4 border-b border-gray-200">
                 <h3 className="text-lg font-medium text-gray-900 flex items-center">
                   <TrendingDown className="h-5 w-5 text-yellow-600 mr-2" />
-                  Optimization Opportunities
+                  Underutilized Tools
                 </h3>
               </div>
               <div className="p-6">

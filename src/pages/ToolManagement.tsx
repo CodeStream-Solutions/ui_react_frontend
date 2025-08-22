@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useRBAC } from '../contexts/RBACContext';
 import { toolApi, userApi } from '../services/api';
@@ -104,6 +105,7 @@ interface UserWithEmployee {
 type TabType = 'tools' | 'categories' | 'toolboxes' | 'transactions' | 'maintenance';
 
 const ToolManagement: React.FC = () => {
+  const location = useLocation();
   const { user } = useAuth();
   const { hasPermission } = useRBAC();
   const [activeTab, setActiveTab] = useState<TabType>('tools');
@@ -123,6 +125,7 @@ const ToolManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | number>('all');
   const [categoryFilter, setCategoryFilter] = useState<number | 'all'>('all');
+  const [showOverdue, setShowOverdue] = useState(false);
 
   // Modal states
   const [showToolModal, setShowToolModal] = useState(false);
@@ -162,6 +165,34 @@ const ToolManagement: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Handle navigation state from Operational Dashboard
+  useEffect(() => {
+    if (location.state) {
+      const { activeTab: navActiveTab, filters } = location.state as any;
+      
+      // Set active tab if provided
+      if (navActiveTab && ['tools', 'categories', 'toolboxes', 'transactions', 'maintenance'].includes(navActiveTab)) {
+        setActiveTab(navActiveTab as TabType);
+      }
+      
+      // Apply filters if provided
+      if (filters) {
+        if (filters.statusFilter !== undefined) {
+          setStatusFilter(filters.statusFilter);
+        }
+        if (filters.categoryFilter !== undefined) {
+          setCategoryFilter(filters.categoryFilter);
+        }
+        if (filters.searchTerm !== undefined) {
+          setSearchTerm(filters.searchTerm);
+        }
+        if (filters.showOverdue !== undefined) {
+          setShowOverdue(filters.showOverdue);
+        }
+      }
+    }
+  }, [location.state]);
 
   const loadData = async () => {
     try {
@@ -203,7 +234,6 @@ const ToolManagement: React.FC = () => {
 
       try {
         const employeesResponse = await userApi.getAllEmployees();
-        console.log('Employees response:', employeesResponse.data); // Debug log
         // Filter to only active employees with valid names
         const employeeData = employeesResponse.data
           .filter((employee: Employee) => 
@@ -211,7 +241,6 @@ const ToolManagement: React.FC = () => {
             employee.FirstName && 
             employee.LastName
           );
-        console.log('Filtered employee data:', employeeData); // Debug log
         setEmployees(employeeData);
       } catch (error: any) {
         console.error('Failed to load employees:', error);
@@ -750,7 +779,7 @@ const ToolManagement: React.FC = () => {
           )}
 
           {activeTab === 'transactions' && (
-            <TransactionsTab transactions={transactions} />
+            <TransactionsTab transactions={transactions} showOverdue={showOverdue} />
           )}
 
           {activeTab === 'maintenance' && (

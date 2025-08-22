@@ -63,9 +63,10 @@ interface Transaction {
 
 interface TransactionsTabProps {
   transactions?: Transaction[];
+  showOverdue?: boolean;
 }
 
-const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions = [] }) => {
+const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions = [], showOverdue = false }) => {
   const { hasPermission } = useRBAC();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -121,7 +122,23 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions = [] }) 
       typeFilter === 'all' || 
       transaction.TransactionTypeID === typeFilter;
     
-    return matchesSearch && matchesType;
+    // Filter for overdue transactions if showOverdue is true
+    let matchesOverdue = true;
+    if (showOverdue) {
+      // Check if this is a checkout transaction with an expected return date that's overdue
+      const isCheckout = transaction.transaction_type?.Name === 'Check Out';
+      const hasExpectedReturn = transaction.ExpectedReturnDate;
+      if (isCheckout && hasExpectedReturn) {
+        const expectedDate = new Date(transaction.ExpectedReturnDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+        matchesOverdue = expectedDate < today;
+      } else {
+        matchesOverdue = false;
+      }
+    }
+    
+    return matchesSearch && matchesType && matchesOverdue;
   });
 
   const getTransactionIcon = (typeName: string) => {

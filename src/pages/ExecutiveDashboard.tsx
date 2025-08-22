@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useRBAC } from '../contexts/RBACContext';
 import { 
   TrendingUp,
@@ -93,6 +94,7 @@ interface StrategicInsights {
 }
 
 const ExecutiveDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { hasPermission, loading: rbacLoading } = useRBAC();
   
   const [loading, setLoading] = useState(true);
@@ -186,9 +188,52 @@ const ExecutiveDashboard: React.FC = () => {
     return { categoryData, trendData, utilizationData };
   };
 
-  const { categoryData, trendData, utilizationData } = formatChartData();
+    const { categoryData, trendData, utilizationData } = formatChartData();
   
+  // KPI Click Handlers
+  const handleTotalAssetsClick = () => {
+    navigate('/tool-management', { 
+      state: { 
+        activeTab: 'tools',
+        filters: { 
+          showAll: true // Show all tools
+        }
+      }
+    });
+  };
 
+  const handleUtilizationRateClick = () => {
+    navigate('/tool-management', { 
+      state: { 
+        activeTab: 'tools',
+        filters: { 
+          statusFilter: 2 // In Use status
+        }
+      }
+    });
+  };
+
+  const handleLossRateClick = () => {
+    navigate('/tool-management', { 
+      state: { 
+        activeTab: 'tools',
+        filters: { 
+          statusFilter: 5 // Lost status (ID: 5)
+        }
+      }
+    });
+  };
+
+  const handleEmployeeEngagementClick = () => {
+    navigate('/tool-management', { 
+      state: { 
+        activeTab: 'transactions',
+        filters: { 
+          showRecent: true // Show recent transactions
+        }
+      }
+    });
+  };
 
   const getTrendIcon = (trend: string, rate: number) => {
     if (trend === 'Growing' || rate > 0) {
@@ -276,7 +321,10 @@ const ExecutiveDashboard: React.FC = () => {
           {/* Business Metrics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {/* Total Assets */}
-            <div className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200">
+            <div 
+              className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md hover:border-blue-300 cursor-pointer transition-all duration-200"
+              onClick={handleTotalAssetsClick}
+            >
               <div className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -294,7 +342,10 @@ const ExecutiveDashboard: React.FC = () => {
             </div>
 
             {/* Utilization Rate */}
-            <div className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200">
+            <div 
+              className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md hover:border-green-300 cursor-pointer transition-all duration-200"
+              onClick={handleUtilizationRateClick}
+            >
               <div className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -312,7 +363,10 @@ const ExecutiveDashboard: React.FC = () => {
             </div>
 
             {/* Loss Rate */}
-            <div className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200">
+            <div 
+              className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md hover:border-red-300 cursor-pointer transition-all duration-200"
+              onClick={handleLossRateClick}
+            >
               <div className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -330,7 +384,10 @@ const ExecutiveDashboard: React.FC = () => {
             </div>
 
             {/* Employee Engagement */}
-            <div className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200">
+            <div 
+              className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md hover:border-purple-300 cursor-pointer transition-all duration-200"
+              onClick={handleEmployeeEngagementClick}
+            >
               <div className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">

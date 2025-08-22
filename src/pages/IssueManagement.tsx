@@ -283,6 +283,55 @@ const IssueManagement: React.FC = () => {
     setCurrentPage(1);
   };
 
+  // KPI Click Handlers
+  const handleActiveIssuesClick = () => {
+    // Show all active issues (open, in progress, resolved)
+    setFilters({
+      status: '',
+      priority: '',
+      issue_type: '',
+      assigned_to_user_id: '',
+      search: ''
+    });
+    setCurrentPage(1);
+  };
+
+  const handleOpenIssuesClick = () => {
+    // Filter to show only open issues
+    setFilters({
+      status: 'open',
+      priority: '',
+      issue_type: '',
+      assigned_to_user_id: '',
+      search: ''
+    });
+    setCurrentPage(1);
+  };
+
+  const handleResolvedIssuesClick = () => {
+    // Filter to show only resolved issues
+    setFilters({
+      status: 'resolved',
+      priority: '',
+      issue_type: '',
+      assigned_to_user_id: '',
+      search: ''
+    });
+    setCurrentPage(1);
+  };
+
+  const handleCriticalIssuesClick = () => {
+    // Filter to show only critical priority issues
+    setFilters({
+      status: '',
+      priority: 'critical',
+      issue_type: '',
+      assigned_to_user_id: '',
+      search: ''
+    });
+    setCurrentPage(1);
+  };
+
   // Helper functions
   const getPriorityColor = (priority: string) => {
     switch (priority.toLowerCase()) {
@@ -365,7 +414,10 @@ const IssueManagement: React.FC = () => {
       {/* Stats Cards */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
+          <div 
+            className="bg-white rounded-lg shadow p-6 hover:shadow-md hover:border-blue-300 cursor-pointer transition-all duration-200 border border-transparent"
+            onClick={handleActiveIssuesClick}
+          >
             <div className="flex items-center">
               <FileText className="h-8 w-8 text-blue-600" />
               <div className="ml-4">
@@ -376,7 +428,10 @@ const IssueManagement: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div 
+            className="bg-white rounded-lg shadow p-6 hover:shadow-md hover:border-yellow-300 cursor-pointer transition-all duration-200 border border-transparent"
+            onClick={handleOpenIssuesClick}
+          >
             <div className="flex items-center">
               <AlertCircle className="h-8 w-8 text-yellow-600" />
               <div className="ml-4">
@@ -385,7 +440,10 @@ const IssueManagement: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div 
+            className="bg-white rounded-lg shadow p-6 hover:shadow-md hover:border-green-300 cursor-pointer transition-all duration-200 border border-transparent"
+            onClick={handleResolvedIssuesClick}
+          >
             <div className="flex items-center">
               <CheckCircle className="h-8 w-8 text-green-600" />
               <div className="ml-4">
@@ -394,7 +452,10 @@ const IssueManagement: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div 
+            className="bg-white rounded-lg shadow p-6 hover:shadow-md hover:border-red-300 cursor-pointer transition-all duration-200 border border-transparent"
+            onClick={handleCriticalIssuesClick}
+          >
             <div className="flex items-center">
               <AlertTriangle className="h-8 w-8 text-red-600" />
               <div className="ml-4">

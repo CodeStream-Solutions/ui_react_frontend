@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   User,
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import api, { toolApi } from '../services/api';
 import Navbar from '../components/Navbar';
+import Notification from '../components/Notification';
 
 // Interfaces
 interface MyTool {
@@ -152,6 +153,25 @@ const EmployeeDashboard: React.FC = () => {
   });
   const [toolOptions, setToolOptions] = useState<ToolOption[]>([]);
   const [submittingIssue, setSubmittingIssue] = useState(false);
+  
+  // Notification state
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    type: 'success' | 'error' | 'warning' | 'info';
+    title: string;
+    message?: string;
+  }>({
+    show: false,
+    type: 'success',
+    title: '',
+    message: ''
+  });
+  
+  // Refs for scrolling to sections
+  const myToolsSectionRef = useRef<HTMLDivElement>(null);
+  const overdueSectionRef = useRef<HTMLDivElement>(null);
+  const activitySectionRef = useRef<HTMLDivElement>(null);
+  const availableToolsSectionRef = useRef<HTMLDivElement>(null);
   
   const fetchEmployeeData = async () => {
     try {
@@ -320,6 +340,29 @@ const EmployeeDashboard: React.FC = () => {
     }));
   };
 
+  // KPI Click Handlers
+  const handleMyToolsClick = () => {
+    myToolsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleOverdueClick = () => {
+    if (overdueCount > 0) {
+      // If there are overdue tools, scroll to the overdue alert banner
+      overdueSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      // If no overdue tools, scroll to the My Tools section
+      myToolsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleActivityClick = () => {
+    activitySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleAvailableToolsClick = () => {
+    availableToolsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const handleSubmitIssue = async () => {
     if (!issueFormData.tool_id || !issueFormData.title.trim() || !issueFormData.description.trim()) {
       setError('Please fill in all required fields');
@@ -347,8 +390,13 @@ const EmployeeDashboard: React.FC = () => {
       });
       setShowReportIssueModal(false);
       
-      // Show success message (you could replace this with a toast notification)
-      alert('Issue reported successfully! Administrators have been notified.');
+      // Show success notification
+      setNotification({
+        show: true,
+        type: 'success',
+        title: 'Issue Reported Successfully',
+        message: 'Your issue has been submitted and administrators have been notified.'
+      });
       
     } catch (error: any) {
       console.error('Error submitting issue:', error);
@@ -369,7 +417,13 @@ const EmployeeDashboard: React.FC = () => {
         }
       }
       
-      setError(errorMessage);
+      // Show error notification
+      setNotification({
+        show: true,
+        type: 'error',
+        title: 'Failed to Report Issue',
+        message: errorMessage
+      });
     } finally {
       setSubmittingIssue(false);
     }
@@ -412,6 +466,16 @@ const EmployeeDashboard: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       
+      {/* Notification Component */}
+      <Notification
+        show={notification.show}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+        onClose={() => setNotification(prev => ({ ...prev, show: false }))}
+        duration={5000}
+      />
+      
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -445,7 +509,7 @@ const EmployeeDashboard: React.FC = () => {
           
           {/* Alert Banner for Overdue Tools */}
           {overdueCount > 0 && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
+            <div ref={overdueSectionRef} className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
               <div className="flex">
                 <Bell className="h-5 w-5 text-red-400" />
                 <div className="ml-3">
@@ -466,7 +530,10 @@ const EmployeeDashboard: React.FC = () => {
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
             {/* My Tools Count */}
-            <div className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200">
+            <div 
+              className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md hover:border-blue-300 cursor-pointer transition-all duration-200"
+              onClick={handleMyToolsClick}
+            >
               <div className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -484,7 +551,10 @@ const EmployeeDashboard: React.FC = () => {
             </div>
 
             {/* Overdue Returns */}
-            <div className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200">
+            <div 
+              className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md hover:border-red-300 cursor-pointer transition-all duration-200"
+              onClick={handleOverdueClick}
+            >
               <div className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -502,7 +572,10 @@ const EmployeeDashboard: React.FC = () => {
             </div>
 
             {/* Recent Activity */}
-            <div className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200">
+            <div 
+              className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md hover:border-green-300 cursor-pointer transition-all duration-200"
+              onClick={handleActivityClick}
+            >
               <div className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -520,7 +593,10 @@ const EmployeeDashboard: React.FC = () => {
             </div>
 
             {/* Available Tools */}
-            <div className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200">
+            <div 
+              className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md hover:border-purple-300 cursor-pointer transition-all duration-200"
+              onClick={handleAvailableToolsClick}
+            >
               <div className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -567,7 +643,7 @@ const EmployeeDashboard: React.FC = () => {
           {/* Main Dashboard Grid - New Layout */}
           
                      {/* My Current Tools - Full Width */}
-           <div className="bg-white shadow-sm rounded-lg border border-gray-200 mb-8">
+           <div ref={myToolsSectionRef} className="bg-white shadow-sm rounded-lg border border-gray-200 mb-8">
              <div className="px-6 py-4 border-b border-gray-200">
                <div className="flex justify-between items-center mb-4">
                  <h3 className="text-lg font-medium text-gray-900 flex items-center">
@@ -707,7 +783,7 @@ const EmployeeDashboard: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
             {/* My Recent Activity */}
-            <div className="bg-white shadow-sm rounded-lg border border-gray-200">
+            <div ref={activitySectionRef} className="bg-white shadow-sm rounded-lg border border-gray-200">
               <div className="px-6 py-4 border-b border-gray-200">
                 <h3 className="text-lg font-medium text-gray-900 flex items-center">
                   <Activity className="h-5 w-5 text-green-600 mr-2" />
@@ -761,7 +837,7 @@ const EmployeeDashboard: React.FC = () => {
             </div>
 
                          {/* Available Tools */}
-             <div className="bg-white shadow-sm rounded-lg border border-gray-200">
+             <div ref={availableToolsSectionRef} className="bg-white shadow-sm rounded-lg border border-gray-200">
                <div className="px-6 py-4 border-b border-gray-200">
                  <div className="flex justify-between items-center mb-4">
                    <h3 className="text-lg font-medium text-gray-900 flex items-center">
