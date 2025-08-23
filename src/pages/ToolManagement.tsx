@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useRBAC } from '../contexts/RBACContext';
 import { toolApi, userApi } from '../services/api';
@@ -104,6 +105,7 @@ interface UserWithEmployee {
 type TabType = 'tools' | 'categories' | 'toolboxes' | 'transactions' | 'maintenance';
 
 const ToolManagement: React.FC = () => {
+  const location = useLocation();
   const { user } = useAuth();
   const { hasPermission } = useRBAC();
   const [activeTab, setActiveTab] = useState<TabType>('tools');
@@ -123,12 +125,17 @@ const ToolManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | number>('all');
   const [categoryFilter, setCategoryFilter] = useState<number | 'all'>('all');
+  const [showOverdue, setShowOverdue] = useState(false);
 
   // Modal states
   const [showToolModal, setShowToolModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   // Status modal removed - system-managed only
   const [showToolboxModal, setShowToolboxModal] = useState(false);
+  
+  // Deactivation confirmation modal state
+  const [showDeactivationModal, setShowDeactivationModal] = useState(false);
+  const [toolToDeactivate, setToolToDeactivate] = useState<{ id: number; name: string; serialNumber: string } | null>(null);
 
   // Form states
   const [toolForm, setToolForm] = useState({
@@ -158,6 +165,34 @@ const ToolManagement: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Handle navigation state from Operational Dashboard
+  useEffect(() => {
+    if (location.state) {
+      const { activeTab: navActiveTab, filters } = location.state as any;
+      
+      // Set active tab if provided
+      if (navActiveTab && ['tools', 'categories', 'toolboxes', 'transactions', 'maintenance'].includes(navActiveTab)) {
+        setActiveTab(navActiveTab as TabType);
+      }
+      
+      // Apply filters if provided
+      if (filters) {
+        if (filters.statusFilter !== undefined) {
+          setStatusFilter(filters.statusFilter);
+        }
+        if (filters.categoryFilter !== undefined) {
+          setCategoryFilter(filters.categoryFilter);
+        }
+        if (filters.searchTerm !== undefined) {
+          setSearchTerm(filters.searchTerm);
+        }
+        if (filters.showOverdue !== undefined) {
+          setShowOverdue(filters.showOverdue);
+        }
+      }
+    }
+  }, [location.state]);
 
   const loadData = async () => {
     try {
@@ -198,18 +233,14 @@ const ToolManagement: React.FC = () => {
       }
 
       try {
-        const employeesResponse = await userApi.getEmployees();
-        console.log('Employees response:', employeesResponse.data); // Debug log
-        // Extract employee data from users
+        const employeesResponse = await userApi.getAllEmployees();
+        // Filter to only active employees with valid names
         const employeeData = employeesResponse.data
-          .filter((user: UserWithEmployee) => 
-            user.employee && 
-            user.employee.IsActive && 
-            user.employee.FirstName && 
-            user.employee.LastName
-          )
-          .map((user: UserWithEmployee) => user.employee!);
-        console.log('Filtered employee data:', employeeData); // Debug log
+          .filter((employee: Employee) => 
+            employee.IsActive && 
+            employee.FirstName && 
+            employee.LastName
+          );
         setEmployees(employeeData);
       } catch (error: any) {
         console.error('Failed to load employees:', error);
@@ -324,21 +355,25 @@ const ToolManagement: React.FC = () => {
   };
 
   const handleToggleToolStatus = async (toolId: number, currentStatus: boolean) => {
-    // Show confirmation dialog for deactivation
+    // Show confirmation modal for deactivation
     if (currentStatus) {
-      const confirmed = window.confirm(
-        'Are you sure you want to deactivate this tool?\n\n' +
-        'This will:\n' +
-        '• Move the tool to the warehouse\n' +
-        '• Set its status to "Retired"\n' +
-        '• Make it unavailable for checkout'
-      );
-      
-      if (!confirmed) {
-        return; // User cancelled
+      const tool = tools.find(t => t.ToolID === toolId);
+      if (tool) {
+        setToolToDeactivate({
+          id: toolId,
+          name: tool.Name,
+          serialNumber: tool.SerialNumber
+        });
+        setShowDeactivationModal(true);
+        return; // Don't proceed until user confirms in modal
       }
     }
 
+    // For activation, proceed immediately
+    await performToolToggle(toolId, currentStatus);
+  };
+
+  const performToolToggle = async (toolId: number, currentStatus: boolean) => {
     try {
       setError('');
       setSuccess('');
@@ -349,6 +384,19 @@ const ToolManagement: React.FC = () => {
     } catch (error: any) {
       setError('Failed to update tool status: ' + (error.response?.data?.detail || error.message));
     }
+  };
+
+  const handleDeactivationConfirm = async () => {
+    if (toolToDeactivate) {
+      await performToolToggle(toolToDeactivate.id, true);
+      setShowDeactivationModal(false);
+      setToolToDeactivate(null);
+    }
+  };
+
+  const handleDeactivationCancel = () => {
+    setShowDeactivationModal(false);
+    setToolToDeactivate(null);
   };
 
   // Delete tool function removed - use activate/deactivate toggle instead
@@ -731,7 +779,7 @@ const ToolManagement: React.FC = () => {
           )}
 
           {activeTab === 'transactions' && (
-            <TransactionsTab transactions={transactions} />
+            <TransactionsTab transactions={transactions} showOverdue={showOverdue} />
           )}
 
           {activeTab === 'maintenance' && (
@@ -740,9 +788,62 @@ const ToolManagement: React.FC = () => {
               onError={setError}
             />
           )}
-      </main>
-    </div>
-  );
+        </main>
+
+        {/* Deactivation Confirmation Modal */}
+        {showDeactivationModal && toolToDeactivate && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <div className="flex items-center mb-4">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                    <AlertTriangle className="h-6 w-6 text-red-600" />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900">
+                    Deactivate Tool
+                  </h3>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">
+                      Are you sure you want to deactivate this tool?
+                    </p>
+                    <div className="mt-3 p-3 bg-gray-50 rounded-md text-left">
+                      <p className="text-sm font-medium text-gray-900">
+                        Tool: {toolToDeactivate.name} ({toolToDeactivate.serialNumber})
+                      </p>
+                      <div className="mt-2 text-sm text-gray-600">
+                        <p className="font-medium">This will:</p>
+                        <ul className="mt-1 space-y-1 list-disc list-inside">
+                          <li>Move the tool to the warehouse</li>
+                          <li>Set its status to "Retired"</li>
+                          <li>Make it unavailable for checkout</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+                    <button
+                      onClick={handleDeactivationConfirm}
+                      className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:col-start-2 sm:text-sm"
+                    >
+                      Deactivate Tool
+                    </button>
+                    <button
+                      onClick={handleDeactivationCancel}
+                      className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:col-start-1 sm:text-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
 };
 
 export default ToolManagement;

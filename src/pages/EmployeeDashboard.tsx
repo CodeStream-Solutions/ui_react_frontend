@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   User,
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import api, { toolApi } from '../services/api';
 import Navbar from '../components/Navbar';
+import Notification from '../components/Notification';
 
 // Interfaces
 interface MyTool {
@@ -126,6 +127,9 @@ const EmployeeDashboard: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [myToolsSelectedCategory, setMyToolsSelectedCategory] = useState<string | null>(null);
+  const [myToolsSearchTerm, setMyToolsSearchTerm] = useState<string>('');
+  const [availableToolsSearchTerm, setAvailableToolsSearchTerm] = useState<string>('');
+  const [showAllMyTools, setShowAllMyTools] = useState<boolean>(false);
   
   // Data states
   const [myToolsData, setMyToolsData] = useState<MyToolsData | null>(null);
@@ -149,6 +153,25 @@ const EmployeeDashboard: React.FC = () => {
   });
   const [toolOptions, setToolOptions] = useState<ToolOption[]>([]);
   const [submittingIssue, setSubmittingIssue] = useState(false);
+  
+  // Notification state
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    type: 'success' | 'error' | 'warning' | 'info';
+    title: string;
+    message?: string;
+  }>({
+    show: false,
+    type: 'success',
+    title: '',
+    message: ''
+  });
+  
+  // Refs for scrolling to sections
+  const myToolsSectionRef = useRef<HTMLDivElement>(null);
+  const overdueSectionRef = useRef<HTMLDivElement>(null);
+  const activitySectionRef = useRef<HTMLDivElement>(null);
+  const availableToolsSectionRef = useRef<HTMLDivElement>(null);
   
   const fetchEmployeeData = async () => {
     try {
@@ -187,10 +210,49 @@ const EmployeeDashboard: React.FC = () => {
     ? Array.from(new Set(myToolsData.my_tools.map(tool => tool.category))).sort()
     : [];
 
-  // Filter my tools based on selected category
-  const filteredMyTools = myToolsData?.my_tools.filter(tool => 
-    !myToolsSelectedCategory || tool.category === myToolsSelectedCategory
-  ) || [];
+  // Filter my tools based on selected category and search term
+  const filteredMyTools = myToolsData?.my_tools.filter(tool => {
+    const matchesCategory = !myToolsSelectedCategory || tool.category === myToolsSelectedCategory;
+    const matchesSearch = !myToolsSearchTerm || 
+      tool.tool_name.toLowerCase().includes(myToolsSearchTerm.toLowerCase()) ||
+      tool.serial_number.toLowerCase().includes(myToolsSearchTerm.toLowerCase()) ||
+      tool.category.toLowerCase().includes(myToolsSearchTerm.toLowerCase()) ||
+      (tool.description && tool.description.toLowerCase().includes(myToolsSearchTerm.toLowerCase()));
+    
+    return matchesCategory && matchesSearch;
+  }) || [];
+
+  // Limit to 9 tools for display, or show all if expanded
+  const displayedMyTools = showAllMyTools ? filteredMyTools : filteredMyTools.slice(0, 9);
+
+  // Filter available tools based on search term
+  const filteredAvailableTools = availableTools?.tools_by_category ? 
+    Object.fromEntries(
+      Object.entries(availableTools.tools_by_category).map(([category, tools]) => [
+        category,
+        tools.filter(tool => 
+          !availableToolsSearchTerm || 
+          tool.tool_name.toLowerCase().includes(availableToolsSearchTerm.toLowerCase()) ||
+          tool.serial_number.toLowerCase().includes(availableToolsSearchTerm.toLowerCase()) ||
+          (tool.description && tool.description.toLowerCase().includes(availableToolsSearchTerm.toLowerCase()))
+        )
+      ]).filter(([category, tools]) => tools.length > 0)
+    ) : {};
+
+  // Flatten all tools from all categories and limit to 6 total
+  const allFilteredTools = Object.entries(filteredAvailableTools).flatMap(([category, tools]) =>
+    tools.map(tool => ({ ...tool, category }))
+  );
+  const displayedAllTools = allFilteredTools.slice(0, 6);
+
+  // Group displayed tools back by category for display
+  const displayedAvailableTools = displayedAllTools.reduce((acc, tool) => {
+    if (!acc[tool.category]) {
+      acc[tool.category] = [];
+    }
+    acc[tool.category].push(tool);
+    return acc;
+  }, {} as { [category: string]: AvailableTool[] });
 
   const handleToolDetailsClick = async (tool: AvailableTool) => {
     try {
@@ -278,6 +340,29 @@ const EmployeeDashboard: React.FC = () => {
     }));
   };
 
+  // KPI Click Handlers
+  const handleMyToolsClick = () => {
+    myToolsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleOverdueClick = () => {
+    if (overdueCount > 0) {
+      // If there are overdue tools, scroll to the overdue alert banner
+      overdueSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      // If no overdue tools, scroll to the My Tools section
+      myToolsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleActivityClick = () => {
+    activitySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleAvailableToolsClick = () => {
+    availableToolsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const handleSubmitIssue = async () => {
     if (!issueFormData.tool_id || !issueFormData.title.trim() || !issueFormData.description.trim()) {
       setError('Please fill in all required fields');
@@ -305,8 +390,13 @@ const EmployeeDashboard: React.FC = () => {
       });
       setShowReportIssueModal(false);
       
-      // Show success message (you could replace this with a toast notification)
-      alert('Issue reported successfully! Administrators have been notified.');
+      // Show success notification
+      setNotification({
+        show: true,
+        type: 'success',
+        title: 'Issue Reported Successfully',
+        message: 'Your issue has been submitted and administrators have been notified.'
+      });
       
     } catch (error: any) {
       console.error('Error submitting issue:', error);
@@ -327,7 +417,13 @@ const EmployeeDashboard: React.FC = () => {
         }
       }
       
-      setError(errorMessage);
+      // Show error notification
+      setNotification({
+        show: true,
+        type: 'error',
+        title: 'Failed to Report Issue',
+        message: errorMessage
+      });
     } finally {
       setSubmittingIssue(false);
     }
@@ -370,6 +466,16 @@ const EmployeeDashboard: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       
+      {/* Notification Component */}
+      <Notification
+        show={notification.show}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+        onClose={() => setNotification(prev => ({ ...prev, show: false }))}
+        duration={5000}
+      />
+      
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -403,7 +509,7 @@ const EmployeeDashboard: React.FC = () => {
           
           {/* Alert Banner for Overdue Tools */}
           {overdueCount > 0 && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
+            <div ref={overdueSectionRef} className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
               <div className="flex">
                 <Bell className="h-5 w-5 text-red-400" />
                 <div className="ml-3">
@@ -422,9 +528,12 @@ const EmployeeDashboard: React.FC = () => {
           )}
           
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
             {/* My Tools Count */}
-            <div className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200">
+            <div 
+              className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md hover:border-blue-300 cursor-pointer transition-all duration-200"
+              onClick={handleMyToolsClick}
+            >
               <div className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -442,7 +551,10 @@ const EmployeeDashboard: React.FC = () => {
             </div>
 
             {/* Overdue Returns */}
-            <div className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200">
+            <div 
+              className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md hover:border-red-300 cursor-pointer transition-all duration-200"
+              onClick={handleOverdueClick}
+            >
               <div className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -460,7 +572,10 @@ const EmployeeDashboard: React.FC = () => {
             </div>
 
             {/* Recent Activity */}
-            <div className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200">
+            <div 
+              className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md hover:border-green-300 cursor-pointer transition-all duration-200"
+              onClick={handleActivityClick}
+            >
               <div className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -478,7 +593,10 @@ const EmployeeDashboard: React.FC = () => {
             </div>
 
             {/* Available Tools */}
-            <div className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200">
+            <div 
+              className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md hover:border-purple-300 cursor-pointer transition-all duration-200"
+              onClick={handleAvailableToolsClick}
+            >
               <div className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -494,140 +612,178 @@ const EmployeeDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Main Dashboard Grid - 2x2 Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            {/* Top Left - My Current Tools */}
-            <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                  <Package className="h-5 w-5 text-blue-600 mr-2" />
-                  My Current Tools
-                </h3>
-                <select
-                  value={myToolsSelectedCategory || ''}
-                  onChange={(e) => setMyToolsSelectedCategory(e.target.value || null)}
-                  className="block w-40 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                >
-                  <option value="">All Categories</option>
-                  {myToolsCategories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="p-6">
-                {filteredMyTools && filteredMyTools.length > 0 ? (
-                  <div className="space-y-4">
-                    {filteredMyTools.map((tool) => (
-                      <div
-                        key={tool.tool_id}
-                        className={`border rounded-lg p-4 ${tool.is_overdue ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <h4 className="font-medium text-gray-900">{tool.tool_name}</h4>
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusBadge(tool.status, tool.is_overdue)}`}>
-                                {tool.is_overdue ? `${tool.days_overdue}d overdue` : tool.status}
-                              </span>
-                            </div>
-                            <p className="text-sm text-gray-500 mb-1">{tool.serial_number} • {tool.category}</p>
-                            {tool.description && (
-                              <p className="text-sm text-gray-600 mb-2">{tool.description}</p>
-                            )}
-                            <div className="flex items-center text-xs text-gray-500 space-x-4">
-                              <span>With me for {tool.days_with_tool} days</span>
-                              {tool.expected_return_date && (
-                                <span>Return by: {new Date(tool.expected_return_date).toLocaleDateString()}</span>
-                              )}
-                            </div>
-                            {tool.comments && (
-                              <p className="text-xs text-gray-600 mt-2 italic">"{tool.comments}"</p>
-                            )}
-                          </div>
-                          {tool.is_overdue && (
-                            <AlertTriangle className="h-5 w-5 text-red-500 ml-2" />
-                          )}
-                        </div>
-                      </div>
-                    ))}
+            {/* Report Tool Issue */}
+            <div className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200">
+              <div className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <AlertTriangle className="h-6 w-6 text-red-600" />
                   </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-sm text-gray-500">
-                      {myToolsSelectedCategory 
-                        ? `No tools in ${myToolsSelectedCategory} category` 
-                        : 'No tools currently assigned'
-                      }
-                    </p>
-                    {myToolsSelectedCategory && myToolsData?.my_tools && myToolsData.my_tools.length > 0 && (
-                      <button
-                        onClick={() => setMyToolsSelectedCategory(null)}
-                        className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
-                      >
-                        Show all tools
-                      </button>
-                    )}
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">Report Issue</dt>
+                      <dd className="text-sm text-red-600">Found a problem?</dd>
+                      <dd className="mt-2">
+                        <button 
+                          onClick={handleReportIssueClick}
+                          className="inline-flex items-center px-3 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
+                        >
+                          <AlertTriangle className="h-4 w-4 mr-1" />
+                          Report
+                        </button>
+                      </dd>
+                    </dl>
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Top Right - Report Tool Issue */}
-            <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                  <AlertTriangle className="h-5 w-5 text-red-600 mr-2" />
-                  Report Tool Issue
-                </h3>
-              </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  <p className="text-sm text-gray-600">
-                    Found a problem with a tool? Report it immediately to ensure safety and proper maintenance.
-                  </p>
-                  
-                  <div className="grid grid-cols-2 gap-3 text-xs text-gray-500">
-                    <div className="flex items-center">
-                      <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
-                      Safety Issues
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
-                      Damage/Wear
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
-                      Malfunction
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-2 h-2 bg-purple-500 rounded-full mr-2"></div>
-                      Missing Tools
-                    </div>
-                  </div>
-                  
-                  <button 
-                    onClick={handleReportIssueClick}
-                    className="w-full inline-flex items-center justify-center px-4 py-3 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
-                  >
-                    <AlertTriangle className="h-4 w-4 mr-2" />
-                    Report an Issue
-                  </button>
-                  
-                  <p className="text-xs text-gray-500 text-center">
-                    Administrators will be notified immediately
-                  </p>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Bottom Left - My Recent Activity */}
-            <div className="bg-white shadow-sm rounded-lg border border-gray-200">
+          {/* Main Dashboard Grid - New Layout */}
+          
+                     {/* My Current Tools - Full Width */}
+           <div ref={myToolsSectionRef} className="bg-white shadow-sm rounded-lg border border-gray-200 mb-8">
+             <div className="px-6 py-4 border-b border-gray-200">
+               <div className="flex justify-between items-center mb-4">
+                 <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                   <Package className="h-5 w-5 text-blue-600 mr-2" />
+                   My Current Tools
+                 </h3>
+                 <select
+                   value={myToolsSelectedCategory || ''}
+                   onChange={(e) => setMyToolsSelectedCategory(e.target.value || null)}
+                   className="block w-40 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                 >
+                   <option value="">All Categories</option>
+                   {myToolsCategories.map((category) => (
+                     <option key={category} value={category}>
+                       {category}
+                     </option>
+                   ))}
+                 </select>
+               </div>
+               
+               {/* Search Bar */}
+               <div className="relative">
+                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                 <input
+                   type="text"
+                   placeholder="Search tools by name, serial number, category, or description..."
+                   value={myToolsSearchTerm}
+                   onChange={(e) => setMyToolsSearchTerm(e.target.value)}
+                   className="block w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                 />
+               </div>
+             </div>
+                         <div className="p-6">
+               {displayedMyTools && displayedMyTools.length > 0 ? (
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                   {displayedMyTools.map((tool) => (
+                    <div
+                      key={tool.tool_id}
+                      className={`border rounded-lg p-4 ${tool.is_overdue ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <h4 className="font-medium text-gray-900">{tool.tool_name}</h4>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusBadge(tool.status, tool.is_overdue)}`}>
+                              {tool.is_overdue ? `${tool.days_overdue}d overdue` : tool.status}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-500 mb-1">{tool.serial_number} • {tool.category}</p>
+                          {tool.description && (
+                            <p className="text-sm text-gray-600 mb-2">{tool.description}</p>
+                          )}
+                          <div className="flex items-center text-xs text-gray-500 space-x-4">
+                            <span>With me for {tool.days_with_tool} days</span>
+                            {tool.expected_return_date && (
+                              <span>Return by: {new Date(tool.expected_return_date).toLocaleDateString()}</span>
+                            )}
+                          </div>
+                          {tool.comments && (
+                            <p className="text-xs text-gray-600 mt-2 italic">"{tool.comments}"</p>
+                          )}
+                        </div>
+                        {tool.is_overdue && (
+                          <AlertTriangle className="h-5 w-5 text-red-500 ml-2" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                               ) : (
+                   <div className="text-center py-8">
+                     <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                     <p className="text-sm text-gray-500">
+                       {myToolsSearchTerm 
+                         ? `No tools found matching "${myToolsSearchTerm}"`
+                         : myToolsSelectedCategory 
+                         ? `No tools in ${myToolsSelectedCategory} category` 
+                         : 'No tools currently assigned'
+                       }
+                     </p>
+                     {(myToolsSelectedCategory || myToolsSearchTerm) && myToolsData?.my_tools && myToolsData.my_tools.length > 0 && (
+                       <div className="mt-2 space-x-2">
+                         {myToolsSelectedCategory && (
+                           <button
+                             onClick={() => setMyToolsSelectedCategory(null)}
+                             className="text-blue-600 hover:text-blue-800 text-sm"
+                           >
+                             Show all categories
+                           </button>
+                         )}
+                         {myToolsSearchTerm && (
+                           <button
+                             onClick={() => setMyToolsSearchTerm('')}
+                             className="text-blue-600 hover:text-blue-800 text-sm"
+                           >
+                             Clear search
+                           </button>
+                         )}
+                       </div>
+                     )}
+                   </div>
+                 )}
+                 
+                                   {/* Show more indicator if there are more tools than displayed */}
+                  {filteredMyTools.length > 9 && !showAllMyTools && (
+                    <div className="mt-4 text-center">
+                      <p className="text-sm text-gray-500">
+                        Showing 9 of {filteredMyTools.length} tools
+                      </p>
+                      <button
+                        onClick={() => setShowAllMyTools(true)}
+                        className="mt-2 inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                      >
+                        Show All Tools
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Show less option when all tools are displayed */}
+                  {showAllMyTools && filteredMyTools.length > 9 && (
+                    <div className="mt-4 text-center">
+                      <p className="text-sm text-gray-500">
+                        Showing all {filteredMyTools.length} tools
+                      </p>
+                      <button
+                        onClick={() => setShowAllMyTools(false)}
+                        className="mt-2 inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+                      >
+                        Show Less
+                      </button>
+                    </div>
+                  )}
+            </div>
+          </div>
+
+          {/* Bottom Row - Side by Side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            {/* My Recent Activity */}
+            <div ref={activitySectionRef} className="bg-white shadow-sm rounded-lg border border-gray-200">
               <div className="px-6 py-4 border-b border-gray-200">
                 <h3 className="text-lg font-medium text-gray-900 flex items-center">
                   <Activity className="h-5 w-5 text-green-600 mr-2" />
@@ -680,75 +836,117 @@ const EmployeeDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Bottom Right - Available Tools */}
-            <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                  <Search className="h-5 w-5 text-purple-600 mr-2" />
-                  Available Tools
-                </h3>
-                <select
-                  value={selectedCategory || ''}
-                  onChange={(e) => setSelectedCategory(e.target.value ? Number(e.target.value) : null)}
-                  className="block w-40 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                >
-                  <option value="">All Categories</option>
-                  {availableTools?.categories.map((cat) => (
-                    <option key={cat.category_id} value={cat.category_id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="p-6">
-                {availableTools?.tools_by_category && Object.keys(availableTools.tools_by_category).length > 0 ? (
-                  <div className="space-y-6">
-                    {Object.entries(availableTools.tools_by_category).map(([category, tools]) => (
-                      <div key={category}>
-                        <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center">
-                          <Tag className="h-4 w-4 text-gray-500 mr-2" />
-                          {category} ({tools.length})
-                        </h4>
-                        <div className="space-y-2">
-                          {tools.slice(0, 5).map((tool) => (
-                            <div
-                              key={tool.tool_id}
-                              className="border border-gray-200 rounded-md p-3 hover:bg-gray-50 transition-colors"
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-900">{tool.tool_name}</p>
-                                  <p className="text-sm text-gray-500">{tool.serial_number}</p>
-                                  {tool.description && (
-                                    <p className="text-xs text-gray-600 mt-1">{tool.description}</p>
-                                  )}
-                                </div>
-                                <button 
-                                  onClick={() => handleToolDetailsClick(tool)}
-                                  className="ml-3 inline-flex items-center px-3 py-1 border border-blue-300 text-xs font-medium rounded text-blue-700 bg-blue-50 hover:bg-blue-100"
-                                >
-                                  <Eye className="h-3 w-3 mr-1" />
-                                  View
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                          {tools.length > 5 && (
-                            <p className="text-xs text-gray-500 text-center py-2">
-                              +{tools.length - 5} more tools in this category
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-sm text-gray-500">No tools available for checkout</p>
-                  </div>
-                )}
-              </div>
+                         {/* Available Tools */}
+             <div ref={availableToolsSectionRef} className="bg-white shadow-sm rounded-lg border border-gray-200">
+               <div className="px-6 py-4 border-b border-gray-200">
+                 <div className="flex justify-between items-center mb-4">
+                   <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                     <Search className="h-5 w-5 text-purple-600 mr-2" />
+                     Available Tools
+                   </h3>
+                   <select
+                     value={selectedCategory || ''}
+                     onChange={(e) => setSelectedCategory(e.target.value ? Number(e.target.value) : null)}
+                     className="block w-40 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                   >
+                     <option value="">All Categories</option>
+                     {availableTools?.categories.map((cat) => (
+                       <option key={cat.category_id} value={cat.category_id}>
+                         {cat.name}
+                       </option>
+                     ))}
+                   </select>
+                 </div>
+                 
+                 {/* Search Bar */}
+                 <div className="relative">
+                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                   <input
+                     type="text"
+                     placeholder="Search available tools by name, serial number, or description..."
+                     value={availableToolsSearchTerm}
+                     onChange={(e) => setAvailableToolsSearchTerm(e.target.value)}
+                     className="block w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                   />
+                 </div>
+               </div>
+                             <div className="p-6">
+                 {Object.keys(displayedAvailableTools).length > 0 ? (
+                   <div className="space-y-6">
+                     {Object.entries(displayedAvailableTools).map(([category, tools]) => {
+                       const originalTools = filteredAvailableTools[category] || [];
+                       return (
+                         <div key={category}>
+                           <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center">
+                             <Tag className="h-4 w-4 text-gray-500 mr-2" />
+                             {category} ({originalTools.length})
+                           </h4>
+                           <div className="space-y-2">
+                             {tools.map((tool) => (
+                               <div
+                                 key={tool.tool_id}
+                                 className="border border-gray-200 rounded-md p-3 hover:bg-gray-50 transition-colors"
+                               >
+                                 <div className="flex items-center justify-between">
+                                   <div className="flex-1">
+                                     <p className="text-sm font-medium text-gray-900">{tool.tool_name}</p>
+                                     <p className="text-sm text-gray-500">{tool.serial_number}</p>
+                                     {tool.description && (
+                                       <p className="text-xs text-gray-600 mt-1">{tool.description}</p>
+                                     )}
+                                   </div>
+                                   <button 
+                                     onClick={() => handleToolDetailsClick(tool)}
+                                     className="ml-3 inline-flex items-center px-3 py-1 border border-blue-300 text-xs font-medium rounded text-blue-700 bg-blue-50 hover:bg-blue-100"
+                                   >
+                                     <Eye className="h-3 w-3 mr-1" />
+                                     View
+                                   </button>
+                                 </div>
+                               </div>
+                             ))}
+                                                           {originalTools.length > tools.length && (
+                                <p className="text-xs text-gray-500 text-center py-2">
+                                  +{originalTools.length - tools.length} more tools in this category
+                                </p>
+                              )}
+                           </div>
+                         </div>
+                       );
+                     })}
+                   </div>
+                 ) : (
+                   <div className="text-center py-8">
+                     <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                     <p className="text-sm text-gray-500">
+                       {availableToolsSearchTerm 
+                         ? `No tools found matching "${availableToolsSearchTerm}"`
+                         : 'No tools available for checkout'
+                       }
+                     </p>
+                     {availableToolsSearchTerm && (
+                       <button
+                         onClick={() => setAvailableToolsSearchTerm('')}
+                         className="mt-2 text-purple-600 hover:text-purple-800 text-sm"
+                       >
+                         Clear search
+                       </button>
+                     )}
+                   </div>
+                 )}
+                 
+                                   {/* Show more indicator if there are more tools than displayed */}
+                  {allFilteredTools.length > 6 && (
+                    <div className="mt-4 text-center">
+                      <p className="text-sm text-gray-500">
+                        Showing 6 of {allFilteredTools.length} available tools
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Use search or category filter to find specific tools
+                      </p>
+                    </div>
+                  )}
+               </div>
             </div>
           </div>
         </div>

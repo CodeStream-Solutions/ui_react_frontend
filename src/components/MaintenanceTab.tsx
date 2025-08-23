@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toolApi } from '../services/api';
-import { X, Upload } from 'lucide-react';
+import { X, Upload, FolderOpen, ImageIcon } from 'lucide-react';
 
 interface Tool {
   ToolID: number;
@@ -74,20 +74,29 @@ const MaintenanceTab: React.FC<MaintenanceTabProps> = ({ onSuccess, onError }) =
     if (!files || files.length === 0) return;
 
     setUploadingImages(true);
+    onError(''); // Clear previous errors
+
     try {
+      // Create FormData for file upload
       const formData = new FormData();
       const validFiles: File[] = [];
 
+      // Validate files before uploading
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        
+        // Validate file type
         if (!file.type.startsWith('image/')) {
           onError(`File ${file.name} is not an image`);
           continue;
         }
+
+        // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
           onError(`File ${file.name} is too large (max 5MB)`);
           continue;
         }
+
         validFiles.push(file);
         formData.append('files', file);
       }
@@ -97,10 +106,13 @@ const MaintenanceTab: React.FC<MaintenanceTabProps> = ({ onSuccess, onError }) =
         return;
       }
 
+      // Upload files to server
       const response = await toolApi.uploadFiles(formData);
+      
       if (response.data.uploaded_files && response.data.uploaded_files.length > 0) {
         const newUrls = response.data.uploaded_files.map((file: any) => file.url);
         setImageUrls([...imageUrls, ...newUrls]);
+        
         if (response.data.errors && response.data.errors.length > 0) {
           onError(`Some files had issues: ${response.data.errors.join(', ')}`);
         }
@@ -324,77 +336,110 @@ const MaintenanceTab: React.FC<MaintenanceTabProps> = ({ onSuccess, onError }) =
                 </div>
 
                 {/* Image Upload Section */}
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 text-left mb-2">
+                <div className="mt-6 border-t pt-4">
+                  <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center">
+                    <ImageIcon className="h-4 w-4 mr-2" />
                     Maintenance Images (Optional)
-                  </label>
+                  </h4>
                   
-                  {/* File Upload Area */}
-                  <div 
-                    className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
-                      isDragOver 
-                        ? 'border-green-400 bg-green-50' 
-                        : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                  >
-                    <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-600 mb-2">
-                      Drag and drop images here, or{' '}
-                      <button
-                        type="button"
+                  {/* Upload Methods */}
+                  <div className="space-y-4">
+                    {/* File Upload */}
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-2 block">Upload from Computer</label>
+                      <div
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
                         onClick={openFileDialog}
-                        className="text-green-600 hover:text-green-700 font-medium"
-                        disabled={uploadingImages}
+                        className={`relative cursor-pointer border-2 border-dashed rounded-md p-6 text-center transition-colors ${
+                          isDragOver
+                            ? 'border-green-400 bg-green-50'
+                            : uploadingImages
+                            ? 'border-gray-200 bg-gray-50'
+                            : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
+                        } ${uploadingImages ? 'cursor-not-allowed' : ''}`}
                       >
-                        browse files
-                      </button>
-                    </p>
-                    <p className="text-xs text-gray-500">PNG, JPG up to 5MB each</p>
-                  </div>
+                        {uploadingImages ? (
+                          <div className="flex flex-col items-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mb-2"></div>
+                            <p className="text-sm text-gray-600">Processing images...</p>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center">
+                            <FolderOpen className={`h-8 w-8 mb-2 ${isDragOver ? 'text-green-500' : 'text-gray-400'}`} />
+                            <p className={`text-sm font-medium ${isDragOver ? 'text-green-600' : 'text-gray-600'}`}>
+                              {isDragOver ? 'Drop images here' : 'Click to browse or drag images here'}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              JPG, PNG, GIF, etc. - Max 5MB each
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </div>
 
-                  {/* Hidden File Input */}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-
-
-
-                  {/* Image List */}
-                  {imageUrls.length > 0 && (
-                    <div className="mt-3 space-y-2">
-                      <p className="text-sm font-medium text-gray-700">Selected Images:</p>
-                      {imageUrls.map((url, index) => (
-                        <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                          <span className="text-sm text-gray-600 truncate flex-1 mr-2">
-                            {url}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => removeImageUrl(index)}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
+                    {/* Image List */}
+                    {imageUrls.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-gray-600">Images to attach ({imageUrls.length}):</p>
+                        <div className="max-h-40 overflow-y-auto space-y-2">
+                          {imageUrls.map((url, index) => {
+                            const isServerUrl = url.startsWith('/api/files/');
+                            const isExternalUrl = url.startsWith('http');
+                            const displayText = isServerUrl 
+                              ? `Uploaded file ${index + 1}`
+                              : isExternalUrl
+                              ? `External image ${index + 1}`
+                              : `Image ${index + 1}`;
+                            
+                            // For server URLs, prepend the base URL
+                            const fullImageUrl = isServerUrl ? `http://localhost:8000${url}` : url;
+                            
+                            return (
+                              <div key={index} className="flex items-center space-x-2 bg-gray-50 p-2 rounded-md">
+                                <div className="flex-shrink-0">
+                                  <img
+                                    src={fullImageUrl}
+                                    alt={`Preview ${index + 1}`}
+                                    className="h-8 w-8 object-cover rounded border"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                    }}
+                                  />
+                                  <ImageIcon className="h-8 w-8 text-gray-400 hidden" />
+                                </div>
+                                <span className="text-xs text-gray-700 truncate flex-1">
+                                  {displayText}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => removeImageUrl(index)}
+                                  className="text-red-500 hover:text-red-700 flex-shrink-0"
+                                  title="Remove image"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            );
+                          })}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      </div>
+                    )}
 
-                  {/* Upload Status */}
-                  {uploadingImages && (
-                    <div className="mt-2 flex items-center text-sm text-gray-600">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mr-2"></div>
-                      Uploading images...
-                    </div>
-                  )}
+                    <p className="text-xs text-gray-500">
+                      Upload images to document the maintenance completion (before/after photos, condition, etc.)
+                    </p>
+                  </div>
                 </div>
 
                 <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">

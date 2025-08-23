@@ -90,6 +90,9 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
   const [uploadingImages, setUploadingImages] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Retire confirmation modal state
+  const [showRetireConfirmation, setShowRetireConfirmation] = useState(false);
 
   // Form states for different transaction types
   const [checkoutForm, setCheckoutForm] = useState({
@@ -302,21 +305,8 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
     
     // Special confirmation for retire action
     if (mode === 'retire') {
-      const confirmed = window.confirm(
-        `⚠️ PERMANENT ACTION WARNING ⚠️\n\n` +
-        `Are you absolutely sure you want to RETIRE this tool?\n\n` +
-        `Tool: ${tool.Name} (${tool.SerialNumber})\n\n` +
-        `This action will:\n` +
-        `• Mark the tool as "Retired"\n` +
-        `• Remove it from active inventory\n` +
-        `• Deactivate the tool in the system\n` +
-        `• This CANNOT be easily undone\n\n` +
-        `Click OK only if you are certain this tool should be permanently retired.`
-      );
-      
-      if (!confirmed) {
-        return; // User cancelled, don't proceed
-      }
+      setShowRetireConfirmation(true);
+      return; // Don't proceed until user confirms in modal
     }
     
     setLoading(true);
@@ -469,6 +459,39 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRetireConfirmation = async () => {
+    setShowRetireConfirmation(false);
+    
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const transactionData = {
+        ...retireForm,
+        _transactionType: 'retire' // Add explicit type indicator
+      };
+
+      await onTransaction(transactionData);
+      setSuccess('Retire transaction completed successfully!');
+      
+      // Reset forms
+      setTimeout(() => {
+        onClose();
+        setSuccess('');
+      }, 1500);
+
+    } catch (error: any) {
+      setError(error.message || 'Transaction failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRetireCancel = () => {
+    setShowRetireConfirmation(false);
   };
 
   const resetForms = () => {
@@ -1066,6 +1089,69 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Retire Confirmation Modal */}
+      {showRetireConfirmation && tool && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center mb-4">
+                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                  <AlertCircle className="h-6 w-6 text-red-600" />
+                </div>
+              </div>
+              <div className="text-center">
+                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                  ⚠️ PERMANENT ACTION WARNING ⚠️
+                </h3>
+                <div className="mt-2">
+                  <p className="text-sm text-gray-500">
+                    Are you absolutely sure you want to <strong>RETIRE</strong> this tool?
+                  </p>
+                  <div className="mt-3 p-3 bg-gray-50 rounded-md text-left">
+                    <p className="text-sm font-medium text-gray-900">
+                      Tool: {tool.Name} ({tool.SerialNumber})
+                    </p>
+                    <div className="mt-2 text-sm text-gray-600">
+                      <p className="font-medium">This action will:</p>
+                      <ul className="mt-1 space-y-1 list-disc list-inside">
+                        <li>Mark the tool as "Retired"</li>
+                        <li>Remove it from active inventory</li>
+                        <li>Deactivate the tool in the system</li>
+                        <li>This CANNOT be easily undone</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-xs text-red-600 font-medium">
+                    Click "Retire Tool" only if you are certain this tool should be permanently retired.
+                  </p>
+                </div>
+
+                <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+                  <button
+                    onClick={handleRetireConfirmation}
+                    disabled={loading}
+                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:col-start-2 sm:text-sm disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    ) : (
+                      'Retire Tool'
+                    )}
+                  </button>
+                  <button
+                    onClick={handleRetireCancel}
+                    disabled={loading}
+                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:col-start-1 sm:text-sm disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
