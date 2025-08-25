@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { useRBAC } from '../contexts/RBACContext';
 import { userApi } from '../services/api';
 import Navbar from '../components/Navbar';
@@ -31,8 +30,7 @@ interface Employee {
 }
 
 const EmployeeManagement: React.FC = () => {
-  const { user: currentUser } = useAuth();
-  const { hasPermission, isAdmin } = useRBAC();
+  const { hasPermission } = useRBAC();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');

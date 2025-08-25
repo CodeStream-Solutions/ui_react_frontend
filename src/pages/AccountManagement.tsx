@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { useRBAC } from '../contexts/RBACContext';
 import { userApi } from '../services/api';
 import Navbar from '../components/Navbar';
@@ -8,16 +7,11 @@ import {
   UserPlus, 
   Shield, 
   Search, 
-  Filter, 
-  MoreVertical, 
-  Edit, 
   Eye, 
   EyeOff,
   CheckCircle,
   XCircle,
   AlertCircle,
-  Plus,
-  Settings,
   RefreshCw
 } from 'lucide-react';
 
@@ -50,8 +44,7 @@ interface UserRole {
 }
 
 const AccountManagement: React.FC = () => {
-  const { user: currentUser } = useAuth();
-  const { hasPermission, isAdmin } = useRBAC();
+  const { hasPermission } = useRBAC();
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [userRoles, setUserRoles] = useState<{ [key: number]: UserRole[] }>({});

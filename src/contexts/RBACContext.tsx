@@ -2,11 +2,6 @@ import React, { createContext, useContext, useState, useEffect, type ReactNode }
 import { useAuth } from './AuthContext';
 import { userApi } from '../services/api';
 
-interface Permission {
-  permission: string;
-  description: string;
-}
-
 interface RoleDetail {
   role_id: number;
   role_name: string;

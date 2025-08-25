@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toolApi } from '../services/api';
-import { X, Upload, FolderOpen, ImageIcon } from 'lucide-react';
+import { X, FolderOpen, ImageIcon } from 'lucide-react';
 
 interface Tool {
   ToolID: number;

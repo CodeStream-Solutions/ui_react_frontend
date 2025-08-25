@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { userApi } from '../services/api';
 import { Eye, EyeOff, Mail, Lock, User, Phone, AlertCircle, CheckCircle } from 'lucide-react';
 
 const Signup: React.FC = () => {
@@ -70,7 +69,7 @@ const Signup: React.FC = () => {
       };
 
       const response = await signup(signupData);
-      setSuccess(response.message || 'Account created successfully! Please check your email for OTP verification.');
+      setSuccess((response as any).message || 'Account created successfully! Please check your email for OTP verification.');
       
       // Redirect to OTP verification after a short delay
       setTimeout(() => {

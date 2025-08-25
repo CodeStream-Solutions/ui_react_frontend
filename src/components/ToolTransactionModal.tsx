@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  XCircle, 
-  ArrowRight, 
-  User, 
-  Package, 
-  Wrench, 
-  Calendar,
+import {
+  XCircle,
+  ArrowRight,
+  User,
+  Wrench,
   AlertCircle,
   CheckCircle,
   Archive,
-  Upload,
   Image as ImageIcon,
   X,
   FolderOpen
@@ -69,7 +66,7 @@ interface ToolTransactionModalProps {
   onTransaction: (transactionData: any) => Promise<void>;
 }
 
-type TransactionMode = 'checkout' | 'checkin' | 'transfer' | 'maintenance' | 'retire';
+type TransactionMode = 'checkout' | 'checkin' | 'transfer' | 'maintenance' | 'other' | 'retire';
 
 const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
   isOpen,
@@ -77,8 +74,6 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
   tool,
   employees,
   toolboxes,
-  statusTypes,
-  transactionTypes,
   onTransaction
 }) => {
   const [mode, setMode] = useState<TransactionMode>('checkout');
@@ -90,7 +85,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
   const [uploadingImages, setUploadingImages] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Retire confirmation modal state
   const [showRetireConfirmation, setShowRetireConfirmation] = useState(false);
 
@@ -103,7 +98,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
   });
 
   // Get employees who have toolboxes assigned
-  const employeesWithToolboxes = employees.filter(employee => 
+  const employeesWithToolboxes = employees.filter(employee =>
     toolboxes.some(toolbox => toolbox.EmployeeID === employee.EmployeeID)
   );
 
@@ -153,7 +148,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
       // Validate files before uploading
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        
+
         // Validate file type
         if (!file.type.startsWith('image/')) {
           setError(`File ${file.name} is not an image`);
@@ -177,11 +172,11 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
 
       // Upload files to server
       const response = await toolApi.uploadFiles(formData);
-      
+
       if (response.data.uploaded_files && response.data.uploaded_files.length > 0) {
         const newUrls = response.data.uploaded_files.map((file: any) => file.url);
         setImageUrls([...imageUrls, ...newUrls]);
-        
+
         if (response.data.errors && response.data.errors.length > 0) {
           setError(`Some files had issues: ${response.data.errors.join(', ')}`);
         }
@@ -220,65 +215,65 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    
+
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       // Create a fake event to reuse the existing handleFileUpload logic
       const fakeEvent = {
         target: { files }
       } as React.ChangeEvent<HTMLInputElement>;
-      
+
       handleFileUpload(fakeEvent);
     }
   };
 
   const canHaveImages = (): boolean => {
     if (!tool) return false;
-    
+
     // Lost tools cannot have images
     const isLost = tool.status?.Name === 'Lost';
     const willBeLost = mode === 'checkin' && tool.status?.Name === 'Lost'; // Tool is being found
-    
+
     return !isLost && !willBeLost;
   };
 
   // Determine available transaction modes based on tool location and status
   const getAvailableModes = (): TransactionMode[] => {
     if (!tool) return [];
-    
+
     const isInWarehouse = tool.ToolboxID === 1 || !tool.ToolboxID;
     const isInUse = tool.status?.Name === 'In Use';
     const isInMaintenance = tool.status?.Name === 'Maintenance';
     const isLost = tool.status?.Name === 'Lost';
     const isBroken = tool.status?.Name === 'Broken';
-    
+
     const availableModes: TransactionMode[] = [];
-    
+
     // Check out: Only available if tool is in warehouse and not in use, not broken, and there are employees with toolboxes
     if (isInWarehouse && !isInUse && !isInMaintenance && !isBroken && employeesWithToolboxes.length > 0) {
       availableModes.push('checkout');
     }
-    
+
     // Check in: Only available if tool is in a toolbox (not warehouse) and in use, OR if tool is lost (when found)
     if (!isInWarehouse && ((isInUse && !isInMaintenance) || isLost)) {
       availableModes.push('checkin');
     }
-    
+
     // Transfer: Available for tools in toolboxes (not warehouse), regardless of use status, but not if lost or broken
     if (!isInWarehouse && !isInMaintenance && !isLost && !isBroken) {
       availableModes.push('transfer');
     }
-    
+
     // Maintenance: Available for tools not in maintenance and not in use (must be checked in first), not lost, OR if broken (broken tools can go to maintenance for repair)
     if (!isInMaintenance && ((!isInUse && !isLost) || isBroken)) {
       availableModes.push('maintenance');
     }
-    
+
     // Retire: Only available for tools in warehouse and not already retired (broken tools can be retired if beyond repair)
     if (isInWarehouse && tool.status?.Name !== 'Retired') {
       availableModes.push('retire');
     }
-    
+
     return availableModes;
   };
 
@@ -302,13 +297,13 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Special confirmation for retire action
     if (mode === 'retire') {
       setShowRetireConfirmation(true);
       return; // Don't proceed until user confirms in modal
     }
-    
+
     setLoading(true);
     setError('');
     setSuccess('');
@@ -317,33 +312,33 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
       let transactionData: any;
 
       switch (mode) {
-                 case 'checkout':
-           if (!checkoutForm.ToEmployeeID) {
-             throw new Error('Please select an employee to check out to');
-           }
-           // Find the employee's toolbox
-           const employeeToolbox = toolboxes.find(toolbox => toolbox.EmployeeID === checkoutForm.ToEmployeeID);
-           if (!employeeToolbox) {
-             throw new Error('Selected employee does not have a toolbox assigned');
-           }
-                     transactionData = {
+        case 'checkout':
+          if (!checkoutForm.ToEmployeeID) {
+            throw new Error('Please select an employee to check out to');
+          }
+          // Find the employee's toolbox
+          const employeeToolbox = toolboxes.find(toolbox => toolbox.EmployeeID === checkoutForm.ToEmployeeID);
+          if (!employeeToolbox) {
+            throw new Error('Selected employee does not have a toolbox assigned');
+          }
+          transactionData = {
             ...checkoutForm,
-            FromToolboxID: tool.ToolboxID || 1, // Use tool's current location (1 for warehouse)
+            FromToolboxID: (tool as any).ToolboxID || 1, // Use tool's current location (1 for warehouse)
             ToToolboxID: employeeToolbox.ToolboxID, // Assign to employee's toolbox
             ToStatus: 2, // Set status to "In Use" (ID: 2)
             ExpectedReturnDate: checkoutForm.ExpectedReturnDate ? new Date(checkoutForm.ExpectedReturnDate).toISOString() : undefined,
             ImageURLs: canHaveImages() ? imageUrls : undefined
           };
-           break;
+          break;
 
-                         case 'checkin':
+        case 'checkin':
           // Automatically determine the employee based on the toolbox
           let fromEmployeeID = 0;
           let isOrphanedToolbox = false;
-          
-          if (tool.toolbox && tool.toolbox.ToolboxID !== 1) {
-            const toolboxOwner = toolboxes.find(toolbox => 
-              toolbox.ToolboxID === tool.toolbox?.ToolboxID
+
+          if ((tool as any).toolbox && (tool as any).toolbox.ToolboxID !== 1) {
+            const toolboxOwner = toolboxes.find(toolbox =>
+              toolbox.ToolboxID === (tool as any).toolbox?.ToolboxID
             );
             if (toolboxOwner && toolboxOwner.EmployeeID) {
               // Check if the employee is active
@@ -359,14 +354,14 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
               isOrphanedToolbox = true;
             }
           }
-          
+
           // For orphaned toolboxes, we don't set FromEmployeeID (backend will handle it)
           transactionData = {
             ...checkinForm,
             FromEmployeeID: isOrphanedToolbox ? null : fromEmployeeID,
             ToToolboxID: 1, // Always go to warehouse
             ToStatus: 1, // Always set to Available when checking in to warehouse
-            Comments: isOrphanedToolbox 
+            Comments: isOrphanedToolbox
               ? `${checkinForm.Comments ? checkinForm.Comments + ' - ' : ''}Recovered from orphaned/unassigned toolbox`.trim()
               : checkinForm.Comments,
             ImageURLs: canHaveImages() ? imageUrls : undefined
@@ -377,25 +372,22 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
           if (!transferForm.ToToolboxID) {
             throw new Error('Please select a destination toolbox');
           }
-          if (tool.ToolboxID === transferForm.ToToolboxID) {
+          if ((tool as any).ToolboxID === transferForm.ToToolboxID) {
             throw new Error('Cannot transfer to the same location');
           }
-          
+
           // Check if this is an orphaned toolbox scenario going to warehouse
           const isGoingToWarehouse = transferForm.ToToolboxID === 1;
           let isOrphanedSource = false;
-          
-          if (tool.toolbox && tool.toolbox.ToolboxID !== 1) {
-            const toolboxRecord = toolboxes.find(toolbox => 
-              toolbox.ToolboxID === tool.toolbox?.ToolboxID
+
+          if ((tool as any).toolbox && (tool as any).toolbox.ToolboxID !== 1) {
+            const toolboxRecord = toolboxes.find(toolbox =>
+              toolbox.ToolboxID === (tool as any).toolbox?.ToolboxID
             );
             // Check for both orphaned (inactive employee) and unassigned (no employee) toolboxes
-            isOrphanedSource = toolboxRecord && (
-              (toolboxRecord.EmployeeID && !employees.find(emp => emp.EmployeeID === toolboxRecord.EmployeeID)) ||
-              !toolboxRecord.EmployeeID
-            );
+            isOrphanedSource = toolboxRecord && ((toolboxRecord.EmployeeID && !employees.find(emp => emp.EmployeeID === toolboxRecord.EmployeeID)) || !toolboxRecord.EmployeeID) || false;
           }
-          
+
           // If transferring from orphaned toolbox to warehouse, use checkin instead
           if (isOrphanedSource && isGoingToWarehouse) {
             // Convert to checkin transaction
@@ -404,7 +396,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
               FromEmployeeID: null,  // Orphaned toolbox
               ToToolboxID: 1,  // Warehouse
               ToStatus: 1,  // Available
-              Comments: transferForm.Comments 
+              Comments: transferForm.Comments
                 ? `${transferForm.Comments} - Recovered from orphaned/unassigned toolbox`
                 : 'Recovered from orphaned/unassigned toolbox',
               ImageURLs: canHaveImages() ? imageUrls : undefined
@@ -413,12 +405,12 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
             setMode('checkin');
           } else {
             // Regular transfer validation
-            if (tool.ToolboxID === 1 || transferForm.ToToolboxID === 1) {
+            if (tool?.ToolboxID === 1 || transferForm.ToToolboxID === 1) {
               throw new Error('Transfers cannot involve the warehouse. Use Check In/Check Out for warehouse operations.');
             }
             transactionData = {
               ...transferForm,
-              FromToolboxID: tool.ToolboxID || 1,
+              FromToolboxID: tool?.ToolboxID || 1,
               ToToolboxID: transferForm.ToToolboxID,
               ImageURLs: canHaveImages() ? imageUrls : undefined
             };
@@ -428,7 +420,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
         case 'maintenance':
           transactionData = {
             ...maintenanceForm,
-            FromToolboxID: tool.ToolboxID || 1, // Use tool's current location
+            FromToolboxID: tool?.ToolboxID || 1, // Use tool's current location
             ToToolboxID: 1, // Always move to warehouse for maintenance
             ExpectedReturnDate: maintenanceForm.ExpectedReturnDate ? new Date(maintenanceForm.ExpectedReturnDate).toISOString() : undefined,
             _transactionType: 'maintenance', // Add explicit type indicator
@@ -436,18 +428,21 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
           };
           break;
 
-        case 'retire':
+        case 'retire' as TransactionMode:
           transactionData = {
             ...retireForm,
             _transactionType: 'retire' // Add explicit type indicator
           };
           break;
+
+        default:
+          throw new Error('Invalid transaction type');
       }
 
       await onTransaction(transactionData);
       const displayMode = transactionData._transactionType || mode;
       setSuccess(`${displayMode.charAt(0).toUpperCase() + displayMode.slice(1)} transaction completed successfully!`);
-      
+
       // Reset forms
       setTimeout(() => {
         onClose();
@@ -463,7 +458,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
 
   const handleRetireConfirmation = async () => {
     setShowRetireConfirmation(false);
-    
+
     setLoading(true);
     setError('');
     setSuccess('');
@@ -476,7 +471,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
 
       await onTransaction(transactionData);
       setSuccess('Retire transaction completed successfully!');
-      
+
       // Reset forms
       setTimeout(() => {
         onClose();
@@ -546,30 +541,30 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
       case 'checkout':
         return (
           <form onSubmit={handleSubmit} className="space-y-4">
-                         <div>
-               <label className="block text-sm font-medium text-gray-700">Check out to Employee</label>
-               <select
-                 required
-                 value={checkoutForm.ToEmployeeID}
-                 onChange={(e) => setCheckoutForm({...checkoutForm, ToEmployeeID: parseInt(e.target.value)})}
-                 className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-               >
-                 <option value={0}>Select Employee</option>
-                 {employeesWithToolboxes.map(employee => {
-                   const employeeToolbox = toolboxes.find(toolbox => toolbox.EmployeeID === employee.EmployeeID);
-                   return (
-                     <option key={employee.EmployeeID} value={employee.EmployeeID}>
-                       {employee.FirstName} {employee.LastName} ({employeeToolbox?.Name || 'Unknown Toolbox'})
-                     </option>
-                   );
-                 })}
-               </select>
-               {employeesWithToolboxes.length === 0 && (
-                 <p className="mt-1 text-sm text-red-500">
-                   No employees with toolboxes available for checkout
-                 </p>
-               )}
-             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Check out to Employee</label>
+              <select
+                required
+                value={checkoutForm.ToEmployeeID}
+                onChange={(e) => setCheckoutForm({ ...checkoutForm, ToEmployeeID: parseInt(e.target.value) })}
+                className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              >
+                <option value={0}>Select Employee</option>
+                {employeesWithToolboxes.map(employee => {
+                  const employeeToolbox = toolboxes.find(toolbox => toolbox.EmployeeID === employee.EmployeeID);
+                  return (
+                    <option key={employee.EmployeeID} value={employee.EmployeeID}>
+                      {employee.FirstName} {employee.LastName} ({employeeToolbox?.Name || 'Unknown Toolbox'})
+                    </option>
+                  );
+                })}
+              </select>
+              {employeesWithToolboxes.length === 0 && (
+                <p className="mt-1 text-sm text-red-500">
+                  No employees with toolboxes available for checkout
+                </p>
+              )}
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Current Location</label>
@@ -583,7 +578,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
               <input
                 type="date"
                 value={checkoutForm.ExpectedReturnDate}
-                onChange={(e) => setCheckoutForm({...checkoutForm, ExpectedReturnDate: e.target.value})}
+                onChange={(e) => setCheckoutForm({ ...checkoutForm, ExpectedReturnDate: e.target.value })}
                 min={new Date().toISOString().split('T')[0]}
                 max="2030-12-31"
                 className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
@@ -594,7 +589,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
               <label className="block text-sm font-medium text-gray-700">Comments</label>
               <textarea
                 value={checkoutForm.Comments}
-                onChange={(e) => setCheckoutForm({...checkoutForm, Comments: e.target.value})}
+                onChange={(e) => setCheckoutForm({ ...checkoutForm, Comments: e.target.value })}
                 rows={3}
                 className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 placeholder="Optional comments about this checkout..."
@@ -603,72 +598,72 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
           </form>
         );
 
-             case 'checkin':
-         return (
-           <form onSubmit={handleSubmit} className="space-y-4">
-             <div>
-               <label className="block text-sm font-medium text-gray-700">Current Location</label>
-               <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 sm:text-sm">
-                 {tool.toolbox ? tool.toolbox.Name : 'Warehouse'}
-               </div>
-             </div>
+      case 'checkin':
+        return (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Current Location</label>
+              <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 sm:text-sm">
+                {tool.toolbox ? tool.toolbox.Name : 'Warehouse'}
+              </div>
+            </div>
 
-             <div>
-               <label className="block text-sm font-medium text-gray-700">Tool Owner</label>
-               <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 sm:text-sm">
-                 {(() => {
-                   if (!tool.toolbox || tool.toolbox.ToolboxID === 1) {
-                     return 'Warehouse (No specific owner)';
-                   }
-                   
-                   // Find the toolbox in our toolboxes list
-                   const toolboxRecord = toolboxes.find(toolbox => 
-                     toolbox.ToolboxID === tool.toolbox?.ToolboxID
-                   );
-                   
-                   if (toolboxRecord && toolboxRecord.EmployeeID) {
-                     // Check if the employee is in our active employees list
-                     const employee = employees.find(emp => emp.EmployeeID === toolboxRecord.EmployeeID);
-                     if (employee) {
-                       return `${employee.FirstName} ${employee.LastName}`;
-                     } else {
-                       // Employee exists in toolbox but not in active employees list (inactive/orphaned)
-                       return '⚠️ Orphaned Toolbox (Inactive Employee)';
-                     }
-                   } else if (toolboxRecord) {
-                     // Toolbox exists but has no employee assigned (unassigned)
-                     return '⚠️ Unassigned Toolbox (No Employee)';
-                   }
-                   
-                   return 'Unknown Owner';
-                 })()}
-               </div>
-               <p className="mt-1 text-sm text-gray-500">
-                 {(() => {
-                   if (!tool.toolbox || tool.toolbox.ToolboxID === 1) {
-                     return 'Tool is in the warehouse';
-                   }
-                   
-                   const toolboxRecord = toolboxes.find(toolbox => 
-                     toolbox.ToolboxID === tool.toolbox?.ToolboxID
-                   );
-                   
-                   if (toolboxRecord && toolboxRecord.EmployeeID) {
-                     const employee = employees.find(emp => emp.EmployeeID === toolboxRecord.EmployeeID);
-                     if (employee) {
-                       return 'Tool will be automatically checked in from the employee who owns this toolbox';
-                     } else {
-                       return 'Tool will be recovered from orphaned toolbox and returned to warehouse';
-                     }
-                   } else if (toolboxRecord) {
-                     // Unassigned toolbox
-                     return 'Tool will be recovered from unassigned toolbox and returned to warehouse';
-                   }
-                   
-                   return 'Tool will be checked in to the warehouse';
-                 })()}
-               </p>
-             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Tool Owner</label>
+              <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 sm:text-sm">
+                {(() => {
+                  if (!tool.toolbox || tool.toolbox.ToolboxID === 1) {
+                    return 'Warehouse (No specific owner)';
+                  }
+
+                  // Find the toolbox in our toolboxes list
+                  const toolboxRecord = toolboxes.find(toolbox =>
+                    toolbox.ToolboxID === tool.toolbox?.ToolboxID
+                  );
+
+                  if (toolboxRecord && toolboxRecord.EmployeeID) {
+                    // Check if the employee is in our active employees list
+                    const employee = employees.find(emp => emp.EmployeeID === toolboxRecord.EmployeeID);
+                    if (employee) {
+                      return `${employee.FirstName} ${employee.LastName}`;
+                    } else {
+                      // Employee exists in toolbox but not in active employees list (inactive/orphaned)
+                      return '⚠️ Orphaned Toolbox (Inactive Employee)';
+                    }
+                  } else if (toolboxRecord) {
+                    // Toolbox exists but has no employee assigned (unassigned)
+                    return '⚠️ Unassigned Toolbox (No Employee)';
+                  }
+
+                  return 'Unknown Owner';
+                })()}
+              </div>
+              <p className="mt-1 text-sm text-gray-500">
+                {(() => {
+                  if (!tool.toolbox || tool.toolbox.ToolboxID === 1) {
+                    return 'Tool is in the warehouse';
+                  }
+
+                  const toolboxRecord = toolboxes.find(toolbox =>
+                    toolbox.ToolboxID === tool.toolbox?.ToolboxID
+                  );
+
+                  if (toolboxRecord && toolboxRecord.EmployeeID) {
+                    const employee = employees.find(emp => emp.EmployeeID === toolboxRecord.EmployeeID);
+                    if (employee) {
+                      return 'Tool will be automatically checked in from the employee who owns this toolbox';
+                    } else {
+                      return 'Tool will be recovered from orphaned toolbox and returned to warehouse';
+                    }
+                  } else if (toolboxRecord) {
+                    // Unassigned toolbox
+                    return 'Tool will be recovered from unassigned toolbox and returned to warehouse';
+                  }
+
+                  return 'Tool will be checked in to the warehouse';
+                })()}
+              </p>
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Tool Status</label>
@@ -684,7 +679,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
               <label className="block text-sm font-medium text-gray-700">Comments</label>
               <textarea
                 value={checkinForm.Comments}
-                onChange={(e) => setCheckinForm({...checkinForm, Comments: e.target.value})}
+                onChange={(e) => setCheckinForm({ ...checkinForm, Comments: e.target.value })}
                 rows={3}
                 className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 placeholder="Optional comments about this check-in..."
@@ -708,7 +703,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
               <select
                 required
                 value={transferForm.ToToolboxID || 0}
-                onChange={(e) => setTransferForm({...transferForm, ToToolboxID: parseInt(e.target.value)})}
+                onChange={(e) => setTransferForm({ ...transferForm, ToToolboxID: parseInt(e.target.value) })}
                 className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               >
                 <option value={0}>Select Toolbox</option>
@@ -726,7 +721,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
               <label className="block text-sm font-medium text-gray-700">Comments</label>
               <textarea
                 value={transferForm.Comments}
-                onChange={(e) => setTransferForm({...transferForm, Comments: e.target.value})}
+                onChange={(e) => setTransferForm({ ...transferForm, Comments: e.target.value })}
                 rows={3}
                 className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 placeholder="Optional comments about this transfer..."
@@ -750,7 +745,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
               <input
                 type="date"
                 value={maintenanceForm.ExpectedReturnDate}
-                onChange={(e) => setMaintenanceForm({...maintenanceForm, ExpectedReturnDate: e.target.value})}
+                onChange={(e) => setMaintenanceForm({ ...maintenanceForm, ExpectedReturnDate: e.target.value })}
                 min={new Date().toISOString().split('T')[0]}
                 max="2030-12-31"
                 className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
@@ -761,7 +756,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
               <label className="block text-sm font-medium text-gray-700">Maintenance Details</label>
               <textarea
                 value={maintenanceForm.Comments}
-                onChange={(e) => setMaintenanceForm({...maintenanceForm, Comments: e.target.value})}
+                onChange={(e) => setMaintenanceForm({ ...maintenanceForm, Comments: e.target.value })}
                 rows={3}
                 className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 placeholder="Describe the maintenance needed..."
@@ -785,7 +780,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
                 <AlertCircle className="h-5 w-5 text-yellow-400" />
                 <div className="ml-3">
                   <p className="text-sm text-yellow-700">
-                    <strong>Warning:</strong> Retiring this tool will permanently remove it from active inventory. 
+                    <strong>Warning:</strong> Retiring this tool will permanently remove it from active inventory.
                     This action should only be used for tools that are no longer serviceable or needed.
                   </p>
                 </div>
@@ -796,7 +791,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
               <label className="block text-sm font-medium text-gray-700">Retirement Reason</label>
               <textarea
                 value={retireForm.Comments}
-                onChange={(e) => setRetireForm({...retireForm, Comments: e.target.value})}
+                onChange={(e) => setRetireForm({ ...retireForm, Comments: e.target.value })}
                 rows={3}
                 className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 placeholder="Explain why this tool is being retired (e.g., beyond repair, obsolete, etc.)..."
@@ -856,19 +851,18 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
                 const Icon = tab.icon;
                 const availableModes = getAvailableModes();
                 const isAvailable = availableModes.includes(tab.id as TransactionMode);
-                
+
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setMode(tab.id as TransactionMode)}
                     disabled={!isAvailable}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center ${
-                      mode === tab.id
-                        ? 'border-blue-500 text-blue-600'
-                        : isAvailable
+                    className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center ${mode === tab.id
+                      ? 'border-blue-500 text-blue-600'
+                      : isAvailable
                         ? 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                         : 'border-transparent text-gray-300 cursor-not-allowed'
-                    }`}
+                      }`}
                   >
                     <Icon className="h-4 w-4 mr-1" />
                     {tab.name}
@@ -892,14 +886,14 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
 
           {/* Orphaned/Unassigned Toolbox Warning */}
           {tool && tool.toolbox && tool.toolbox.ToolboxID !== 1 && (() => {
-            const toolboxRecord = toolboxes.find(toolbox => 
+            const toolboxRecord = toolboxes.find(toolbox =>
               toolbox.ToolboxID === tool.toolbox?.ToolboxID
             );
-            
+
             let warningType = null;
             let warningTitle = '';
             let warningMessage = '';
-            
+
             if (toolboxRecord && toolboxRecord.EmployeeID) {
               // Check if employee is inactive (orphaned)
               const employee = employees.find(emp => emp.EmployeeID === toolboxRecord.EmployeeID);
@@ -914,7 +908,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
               warningTitle = 'Unassigned Toolbox Detected';
               warningMessage = 'This tool is in a toolbox that has no employee assigned. The system will automatically handle the recovery and return the tool to the warehouse.';
             }
-            
+
             return warningType ? (
               <div className="mb-4 rounded-md bg-yellow-50 p-4">
                 <div className="flex">
@@ -949,7 +943,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
                 <ImageIcon className="h-4 w-4 mr-2" />
                 Transaction Images (Optional)
               </h4>
-              
+
               {/* Upload Methods */}
               <div className="space-y-4">
                 {/* File Upload */}
@@ -960,13 +954,12 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
                     onClick={openFileDialog}
-                    className={`relative cursor-pointer border-2 border-dashed rounded-md p-6 text-center transition-colors ${
-                      isDragOver
-                        ? 'border-blue-400 bg-blue-50'
-                        : uploadingImages
+                    className={`relative cursor-pointer border-2 border-dashed rounded-md p-6 text-center transition-colors ${isDragOver
+                      ? 'border-blue-400 bg-blue-50'
+                      : uploadingImages
                         ? 'border-gray-200 bg-gray-50'
                         : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
-                    } ${uploadingImages ? 'cursor-not-allowed' : ''}`}
+                      } ${uploadingImages ? 'cursor-not-allowed' : ''}`}
                   >
                     {uploadingImages ? (
                       <div className="flex flex-col items-center">
@@ -1005,15 +998,15 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
                       {imageUrls.map((url, index) => {
                         const isServerUrl = url.startsWith('/api/files/');
                         const isExternalUrl = url.startsWith('http');
-                        const displayText = isServerUrl 
+                        const displayText = isServerUrl
                           ? `Uploaded file ${index + 1}`
                           : isExternalUrl
-                          ? `External image ${index + 1}`
-                          : `Image ${index + 1}`;
-                        
+                            ? `External image ${index + 1}`
+                            : `Image ${index + 1}`;
+
                         // For server URLs, prepend the base URL
                         const fullImageUrl = isServerUrl ? `http://localhost:8000${url}` : url;
-                        
+
                         return (
                           <div key={index} className="flex items-center space-x-2 bg-gray-50 p-2 rounded-md">
                             <div className="flex-shrink-0">

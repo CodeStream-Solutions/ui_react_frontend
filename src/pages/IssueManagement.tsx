@@ -4,9 +4,6 @@ import {
   Clock, 
   CheckCircle, 
   XCircle, 
-  User, 
-  Calendar,
-  Filter,
   Search,
   RefreshCw,
   Eye,
@@ -15,7 +12,6 @@ import {
   Wrench,
   AlertCircle,
   TrendingUp,
-  Users,
   FileText,
   X
 } from 'lucide-react';

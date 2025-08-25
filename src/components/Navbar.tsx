@@ -5,7 +5,6 @@ import { useRBAC } from '../contexts/RBACContext';
 import { 
   Shield, 
   Users, 
-  Settings, 
   LogOut, 
   User,
   Home,
@@ -20,7 +19,7 @@ import {
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
-  const { hasPermission, isAdmin, isWarehouseManager } = useRBAC();
+  const { isAdmin, isWarehouseManager } = useRBAC();
   const location = useLocation();
   const [dashboardDropdownOpen, setDashboardDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

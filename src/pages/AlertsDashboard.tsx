@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { useRBAC } from '../contexts/RBACContext';
 import { 
   AlertTriangle, 
@@ -48,7 +47,6 @@ interface AlertDetails {
 }
 
 const AlertsDashboard: React.FC = () => {
-  const { user } = useAuth();
   const { hasPermission, loading: rbacLoading } = useRBAC();
   
   const [loading, setLoading] = useState(true);

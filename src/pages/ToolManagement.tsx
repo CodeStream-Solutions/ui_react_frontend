@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 import { useRBAC } from '../contexts/RBACContext';
 import { toolApi, userApi } from '../services/api';
 import Navbar from '../components/Navbar';
@@ -12,22 +11,11 @@ import TransactionsTab from '../components/TransactionsTab';
 import MaintenanceTab from '../components/MaintenanceTab';
 import { 
   Wrench, 
-  Plus, 
-  Search, 
-  Filter, 
-  Edit, 
-  Trash2, 
-  Eye, 
-  EyeOff,
   CheckCircle,
-  XCircle,
   AlertCircle,
   RefreshCw,
   Package,
   Tag,
-  Settings,
-  Calendar,
-  Hash,
   ArrowRight,
   AlertTriangle
 } from 'lucide-react';
@@ -94,19 +82,10 @@ interface Employee {
   CreatedAt: string;
 }
 
-interface UserWithEmployee {
-  UserID: number;
-  Username: string;
-  IsActive: boolean;
-  CreatedAt: string;
-  employee?: Employee;
-}
-
 type TabType = 'tools' | 'categories' | 'toolboxes' | 'transactions' | 'maintenance';
 
 const ToolManagement: React.FC = () => {
   const location = useLocation();
-  const { user } = useAuth();
   const { hasPermission } = useRBAC();
   const [activeTab, setActiveTab] = useState<TabType>('tools');
   const [loading, setLoading] = useState(true);

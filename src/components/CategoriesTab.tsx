@@ -46,7 +46,6 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({
   onSubmit,
   onUpdate,
   onDelete,
-  resetForm
 }) => {
   const { hasPermission } = useRBAC();
   const [editingCategory, setEditingCategory] = useState<ToolCategory | null>(null);

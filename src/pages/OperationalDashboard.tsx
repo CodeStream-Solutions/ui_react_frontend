@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 import { useRBAC } from '../contexts/RBACContext';
-import { 
-  Package, 
-  Users, 
-  AlertTriangle, 
+import {
+  Package,
+  Users,
+  AlertTriangle,
   Wrench,
   CheckCircle,
   Clock,
-  TrendingUp,
   Activity,
   RefreshCw,
   BarChart3,
@@ -17,8 +15,6 @@ import {
   Bell,
   ArrowRight,
   ArrowLeft,
-  Calendar,
-  Settings
 } from 'lucide-react';
 import api from '../services/api';
 import Navbar from '../components/Navbar';
@@ -96,35 +92,34 @@ interface PendingActions {
 
 const OperationalDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { hasPermission, loading: rbacLoading } = useRBAC();
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [maxActivities, setMaxActivities] = useState(8);
-  
+
   // Refs for height measurement
   const categoryStatusRef = useRef<HTMLDivElement>(null);
   const activityFeedRef = useRef<HTMLDivElement>(null);
-  
+
   // Data states
   const [metrics, setMetrics] = useState<OperationalMetrics | null>(null);
   const [liveActivity, setLiveActivity] = useState<LiveActivity[]>([]);
   const [warehouseStatus, setWarehouseStatus] = useState<WarehouseStatus | null>(null);
   const [employeeAssignments, setEmployeeAssignments] = useState<EmployeeAssignment[]>([]);
   const [pendingActions, setPendingActions] = useState<PendingActions | null>(null);
-  
+
   const fetchDashboardData = async () => {
     try {
       setRefreshing(true);
       setError('');
-      
+
       // Wait for RBAC to finish loading before checking permissions
       if (rbacLoading) {
         return;
       }
-      
+
       if (!hasPermission('view_dashboard')) {
         setError('You do not have permission to view the dashboard');
         return;
@@ -144,13 +139,13 @@ const OperationalDashboard: React.FC = () => {
         api.get('/api/dashboard/operational/employee-assignments'),
         api.get('/api/dashboard/operational/pending-actions')
       ]);
-      
+
       setMetrics(metricsResponse.data);
       setLiveActivity(activityResponse.data);
       setWarehouseStatus(warehouseResponse.data);
       setEmployeeAssignments(employeesResponse.data);
-             setPendingActions(actionsResponse.data);
-      
+      setPendingActions(actionsResponse.data);
+
     } catch (err: any) {
       setError(`Error: ${err.response?.data?.detail || err.message || 'Failed to fetch dashboard data'}`);
     } finally {
@@ -161,7 +156,7 @@ const OperationalDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchDashboardData();
-    
+
     // Auto-refresh every 30 seconds
     const interval = setInterval(fetchDashboardData, 30000);
     return () => clearInterval(interval);
@@ -175,10 +170,10 @@ const OperationalDashboard: React.FC = () => {
         const headerHeight = 60; // Approximate header height (px-4 py-3 + border)
         const paddingHeight = 32; // Approximate padding (p-4 = 16px top + 16px bottom)
         const footerHeight = 20; // Approximate footer height for "more activities" text
-        
+
         const availableHeight = categoryHeight - headerHeight - paddingHeight - footerHeight;
         const activityItemHeight = 72; // Approximate height per activity item (pb-6 + content)
-        
+
         const calculatedMax = Math.max(1, Math.floor(availableHeight / activityItemHeight));
         setMaxActivities(calculatedMax);
       }
@@ -186,10 +181,10 @@ const OperationalDashboard: React.FC = () => {
 
     // Calculate after data loads and component renders
     const timer = setTimeout(calculateMaxActivities, 100);
-    
+
     // Recalculate on window resize
     window.addEventListener('resize', calculateMaxActivities);
-    
+
     return () => {
       clearTimeout(timer);
       window.removeEventListener('resize', calculateMaxActivities);
@@ -219,10 +214,10 @@ const OperationalDashboard: React.FC = () => {
 
   // KPI Click Handlers
   const handleAvailableNowClick = () => {
-    navigate('/tool-management', { 
-      state: { 
+    navigate('/tool-management', {
+      state: {
         activeTab: 'tools',
-        filters: { 
+        filters: {
           statusFilter: 1 // Available status
         }
       }
@@ -230,10 +225,10 @@ const OperationalDashboard: React.FC = () => {
   };
 
   const handleActiveDeploymentsClick = () => {
-    navigate('/tool-management', { 
-      state: { 
+    navigate('/tool-management', {
+      state: {
         activeTab: 'tools',
-        filters: { 
+        filters: {
           statusFilter: 2 // In Use status
         }
       }
@@ -241,10 +236,10 @@ const OperationalDashboard: React.FC = () => {
   };
 
   const handleOverdueReturnsClick = () => {
-    navigate('/tool-management', { 
-      state: { 
+    navigate('/tool-management', {
+      state: {
         activeTab: 'transactions',
-        filters: { 
+        filters: {
           showOverdue: true
         }
       }
@@ -252,8 +247,8 @@ const OperationalDashboard: React.FC = () => {
   };
 
   const handleMaintenanceQueueClick = () => {
-    navigate('/tool-management', { 
-      state: { 
+    navigate('/tool-management', {
+      state: {
         activeTab: 'maintenance'
       }
     });
@@ -292,7 +287,7 @@ const OperationalDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      
+
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -321,11 +316,11 @@ const OperationalDashboard: React.FC = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          
+
           {/* Real-Time Metrics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {/* Tools Available Now */}
-            <div 
+            <div
               className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md hover:border-green-300 cursor-pointer transition-all duration-200"
               onClick={handleAvailableNowClick}
             >
@@ -346,7 +341,7 @@ const OperationalDashboard: React.FC = () => {
             </div>
 
             {/* Active Deployments */}
-            <div 
+            <div
               className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md hover:border-blue-300 cursor-pointer transition-all duration-200"
               onClick={handleActiveDeploymentsClick}
             >
@@ -367,7 +362,7 @@ const OperationalDashboard: React.FC = () => {
             </div>
 
             {/* Overdue Returns */}
-            <div 
+            <div
               className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md hover:border-orange-300 cursor-pointer transition-all duration-200"
               onClick={handleOverdueReturnsClick}
             >
@@ -388,7 +383,7 @@ const OperationalDashboard: React.FC = () => {
             </div>
 
             {/* Maintenance Queue */}
-            <div 
+            <div
               className="bg-white overflow-hidden shadow-sm rounded-lg border border-gray-200 hover:shadow-md hover:border-red-300 cursor-pointer transition-all duration-200"
               onClick={handleMaintenanceQueueClick}
             >
@@ -411,241 +406,241 @@ const OperationalDashboard: React.FC = () => {
 
           {/* Category Availability Status & Live Activity Feed */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-            
-                         {/* Category Availability Status - Takes up 2/3 of the space */}
-             <div className="lg:col-span-2">
-               <div ref={categoryStatusRef} className="bg-white shadow-sm rounded-lg border border-gray-200">
-                 <div className="px-6 py-4 border-b border-gray-200">
-                   <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                     <Package className="h-5 w-5 text-blue-600 mr-2" />
-                     Category Availability Status
-                   </h3>
-                 </div>
-                 <div className="p-6">
-                   {warehouseStatus?.categories && warehouseStatus.categories.length > 0 ? (
-                     <div className="space-y-4">
-                       {warehouseStatus.categories.map((category, index) => (
-                         <div key={`category-${category.category}-${index}`} className="space-y-2">
-                           <div className="flex items-center justify-between">
-                             <span className="text-sm font-medium text-gray-900">{category.category}</span>
-                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(category.status_color)}`}>
-                               {category.status_level}
-                             </span>
-                           </div>
-                           <div className="flex items-center text-xs text-gray-500 space-x-4">
-                             <span>Available: {category.available_in_warehouse}</span>
-                             <span>Deployed: {category.deployed}</span>
-                             <span>Maintenance: {category.maintenance}</span>
-                             <span>Broken: {category.broken}</span>
-                             <span>Lost: {category.lost}</span>
-                           </div>
-                           <div className="w-full bg-gray-200 rounded-full h-2">
-                             <div
-                               className="bg-blue-600 h-2 rounded-full"
-                               style={{ width: `${category.availability_ratio}%` }}
-                             ></div>
-                           </div>
-                         </div>
-                       ))}
-                     </div>
-                   ) : (
-                     <div className="text-center py-8">
-                       <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                       <p className="text-sm text-gray-500">No category data available</p>
-                     </div>
-                   )}
-                 </div>
-               </div>
-             </div>
 
-                         {/* Live Activity Feed - Takes up 1/3 of the space */}
-             <div className="lg:col-span-1">
-               <div ref={activityFeedRef} className="bg-white shadow-sm rounded-lg border border-gray-200 h-full">
-                 <div className="px-4 py-3 border-b border-gray-200">
-                   <h3 className="text-base font-medium text-gray-900 flex items-center">
-                     <Activity className="h-4 w-4 text-blue-600 mr-2" />
-                     Live Activity Feed
-                   </h3>
-                 </div>
-                 <div className="p-4 overflow-y-auto">
-                   {liveActivity.length > 0 ? (
-                     <div className="flow-root">
-                       <ul className="-mb-6">
-                         {liveActivity.slice(0, maxActivities).map((activity, index) => (
-                           <li key={activity.transaction_id}>
-                             <div className="relative pb-6">
-                               {index !== Math.min(liveActivity.length - 1, maxActivities - 1) && (
-                                 <span className="absolute top-3 left-3 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
-                               )}
-                               <div className="relative flex space-x-2">
-                                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 flex-shrink-0">
-                                   {getActivityIcon(activity.transaction_type)}
-                                 </div>
-                                 <div className="flex min-w-0 flex-1 justify-between space-x-2">
-                                   <div className="min-w-0 flex-1">
-                                     <p className="text-xs text-gray-900 truncate">
-                                       <span className="font-medium">{activity.tool_name}</span>
-                                       <span className="text-gray-500"> ({activity.serial_number})</span>
-                                     </p>
-                                     <p className="text-xs text-gray-500 truncate">
-                                       {activity.activity_description || `${activity.transaction_type} → ${activity.to_status}`}
-                                     </p>
-                                     <p className="text-xs text-gray-400 truncate">by {activity.employee_name}</p>
-                                   </div>
-                                   <div className="whitespace-nowrap text-right text-xs text-gray-500 flex-shrink-0">
-                                     {activity.time_ago}
-                                   </div>
-                                 </div>
-                               </div>
-                             </div>
-                           </li>
-                         ))}
-                       </ul>
-                       {liveActivity.length > maxActivities && (
-                         <div className="text-center pt-2">
-                           <p className="text-xs text-gray-500">+{liveActivity.length - maxActivities} more activities</p>
-                         </div>
-                       )}
-                     </div>
-                   ) : (
-                     <div className="text-center py-6">
-                       <Activity className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                       <p className="text-xs text-gray-500">No recent activity</p>
-                     </div>
-                   )}
-                 </div>
-               </div>
-             </div>
+            {/* Category Availability Status - Takes up 2/3 of the space */}
+            <div className="lg:col-span-2">
+              <div ref={categoryStatusRef} className="bg-white shadow-sm rounded-lg border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                    <Package className="h-5 w-5 text-blue-600 mr-2" />
+                    Category Availability Status
+                  </h3>
+                </div>
+                <div className="p-6">
+                  {warehouseStatus?.categories && warehouseStatus.categories.length > 0 ? (
+                    <div className="space-y-4">
+                      {warehouseStatus.categories.map((category, index) => (
+                        <div key={`category-${category.category}-${index}`} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-900">{category.category}</span>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(category.status_color)}`}>
+                              {category.status_level}
+                            </span>
+                          </div>
+                          <div className="flex items-center text-xs text-gray-500 space-x-4">
+                            <span>Available: {category.available_in_warehouse}</span>
+                            <span>Deployed: {category.deployed}</span>
+                            <span>Maintenance: {category.maintenance}</span>
+                            <span>Broken: {(category as any).broken}</span>
+                            <span>Lost: {(category as any).lost}</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full"
+                              style={{ width: `${category.availability_ratio}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-sm text-gray-500">No category data available</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Live Activity Feed - Takes up 1/3 of the space */}
+            <div className="lg:col-span-1">
+              <div ref={activityFeedRef} className="bg-white shadow-sm rounded-lg border border-gray-200 h-full">
+                <div className="px-4 py-3 border-b border-gray-200">
+                  <h3 className="text-base font-medium text-gray-900 flex items-center">
+                    <Activity className="h-4 w-4 text-blue-600 mr-2" />
+                    Live Activity Feed
+                  </h3>
+                </div>
+                <div className="p-4 overflow-y-auto">
+                  {liveActivity.length > 0 ? (
+                    <div className="flow-root">
+                      <ul className="-mb-6">
+                        {liveActivity.slice(0, maxActivities).map((activity, index) => (
+                          <li key={activity.transaction_id}>
+                            <div className="relative pb-6">
+                              {index !== Math.min(liveActivity.length - 1, maxActivities - 1) && (
+                                <span className="absolute top-3 left-3 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
+                              )}
+                              <div className="relative flex space-x-2">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 flex-shrink-0">
+                                  {getActivityIcon(activity.transaction_type)}
+                                </div>
+                                <div className="flex min-w-0 flex-1 justify-between space-x-2">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs text-gray-900 truncate">
+                                      <span className="font-medium">{activity.tool_name}</span>
+                                      <span className="text-gray-500"> ({activity.serial_number})</span>
+                                    </p>
+                                    <p className="text-xs text-gray-500 truncate">
+                                      {(activity as any).activity_description || `${activity.transaction_type} → ${activity.to_status}`}
+                                    </p>
+                                    <p className="text-xs text-gray-400 truncate">by {activity.employee_name}</p>
+                                  </div>
+                                  <div className="whitespace-nowrap text-right text-xs text-gray-500 flex-shrink-0">
+                                    {activity.time_ago}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                      {liveActivity.length > maxActivities && (
+                        <div className="text-center pt-2">
+                          <p className="text-xs text-gray-500">+{liveActivity.length - maxActivities} more activities</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <Activity className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-xs text-gray-500">No recent activity</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
-                     {/* Pending Actions & Employee Assignments */}
-           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-             
-             {/* Pending Actions - Takes up 1/3 of the space */}
-             <div className="lg:col-span-1">
-               <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-                 <div className="px-4 py-3 border-b border-gray-200">
-                   <h3 className="text-base font-medium text-gray-900 flex items-center">
-                     <Bell className="h-4 w-4 text-red-600 mr-2" />
-                     Pending Actions
-                   </h3>
-                 </div>
-                                   <div className="p-4">
-                    <div className="space-y-3">
-                      {/* Overdue Returns */}
-                      {pendingActions?.overdue_returns && pendingActions.overdue_returns.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-medium text-red-600 mb-2">Overdue Returns ({pendingActions.overdue_returns.length})</h4>
-                          <div className="space-y-2">
-                            {pendingActions.overdue_returns.slice(0, 2).map((item, index) => (
-                              <div key={`overdue-${item.tool_id}-${item.serial_number}-${index}`} className="text-sm py-1">
-                                <span className="font-medium">{item.tool_name}</span>
-                                <span className="text-gray-500"> - {item.employee_name}</span>
-                                <span className="text-red-600"> ({item.days_overdue}d)</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+          {/* Pending Actions & Employee Assignments */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-                      {/* Maintenance Needed */}
-                      {pendingActions?.maintenance_needed && pendingActions.maintenance_needed.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-medium text-orange-600 mb-2">Maintenance ({pendingActions.maintenance_needed.length})</h4>
-                          <div className="space-y-2">
-                            {pendingActions.maintenance_needed.slice(0, 2).map((item, index) => (
-                              <div key={`maintenance-${item.tool_id}-${item.serial_number}-${index}`} className="text-sm py-1">
-                                <span className="font-medium">{item.tool_name}</span>
-                                <span className="text-gray-500"> - {item.status}</span>
-                              </div>
-                            ))}
-                          </div>
+            {/* Pending Actions - Takes up 1/3 of the space */}
+            <div className="lg:col-span-1">
+              <div className="bg-white shadow-sm rounded-lg border border-gray-200">
+                <div className="px-4 py-3 border-b border-gray-200">
+                  <h3 className="text-base font-medium text-gray-900 flex items-center">
+                    <Bell className="h-4 w-4 text-red-600 mr-2" />
+                    Pending Actions
+                  </h3>
+                </div>
+                <div className="p-4">
+                  <div className="space-y-3">
+                    {/* Overdue Returns */}
+                    {pendingActions?.overdue_returns && pendingActions.overdue_returns.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-red-600 mb-2">Overdue Returns ({pendingActions.overdue_returns.length})</h4>
+                        <div className="space-y-2">
+                          {pendingActions.overdue_returns.slice(0, 2).map((item, index) => (
+                            <div key={`overdue-${item.tool_id}-${item.serial_number}-${index}`} className="text-sm py-1">
+                              <span className="font-medium">{item.tool_name}</span>
+                              <span className="text-gray-500"> - {item.employee_name}</span>
+                              <span className="text-red-600"> ({item.days_overdue}d)</span>
+                            </div>
+                          ))}
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      {/* Broken Tools */}
-                      {pendingActions?.broken_tools && pendingActions.broken_tools.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-medium text-red-600 mb-2">Broken ({pendingActions.broken_tools.length})</h4>
-                          <div className="space-y-2">
-                            {pendingActions.broken_tools.slice(0, 2).map((item, index) => (
-                              <div key={`broken-${item.tool_id}-${item.serial_number}-${index}`} className="text-sm py-1">
-                                <span className="font-medium">{item.tool_name}</span>
-                                <span className="text-gray-500"> - {item.status}</span>
-                              </div>
-                            ))}
-                          </div>
+                    {/* Maintenance Needed */}
+                    {pendingActions?.maintenance_needed && pendingActions.maintenance_needed.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-orange-600 mb-2">Maintenance ({pendingActions.maintenance_needed.length})</h4>
+                        <div className="space-y-2">
+                          {pendingActions.maintenance_needed.slice(0, 2).map((item, index) => (
+                            <div key={`maintenance-${item.tool_id}-${item.serial_number}-${index}`} className="text-sm py-1">
+                              <span className="font-medium">{item.tool_name}</span>
+                              <span className="text-gray-500"> - {item.status}</span>
+                            </div>
+                          ))}
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      {/* Lost Tools */}
-                      {pendingActions?.lost_tools && pendingActions.lost_tools.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-medium text-red-600 mb-2">Lost ({pendingActions.lost_tools.length})</h4>
-                          <div className="space-y-2">
-                            {pendingActions.lost_tools.map((item, index) => (
-                              <div key={`lost-${item.tool_id}-${item.serial_number}-${index}`} className="text-sm py-1">
-                                <span className="font-medium">{item.tool_name}</span>
-                                <span className="text-gray-500"> ({item.serial_number})</span>
-                              </div>
-                            ))}
-                          </div>
+                    {/* Broken Tools */}
+                    {pendingActions?.broken_tools && pendingActions.broken_tools.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-red-600 mb-2">Broken ({pendingActions.broken_tools.length})</h4>
+                        <div className="space-y-2">
+                          {pendingActions.broken_tools.slice(0, 2).map((item, index) => (
+                            <div key={`broken-${item.tool_id}-${item.serial_number}-${index}`} className="text-sm py-1">
+                              <span className="font-medium">{item.tool_name}</span>
+                              <span className="text-gray-500"> - {item.status}</span>
+                            </div>
+                          ))}
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      {(!pendingActions?.overdue_returns?.length && 
-                        !pendingActions?.maintenance_needed?.length && 
-                        !pendingActions?.broken_tools?.length &&
-                        !pendingActions?.lost_tools?.length) && (
+                    {/* Lost Tools */}
+                    {pendingActions?.lost_tools && pendingActions.lost_tools.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-red-600 mb-2">Lost ({pendingActions.lost_tools.length})</h4>
+                        <div className="space-y-2">
+                          {pendingActions.lost_tools.map((item, index) => (
+                            <div key={`lost-${item.tool_id}-${item.serial_number}-${index}`} className="text-sm py-1">
+                              <span className="font-medium">{item.tool_name}</span>
+                              <span className="text-gray-500"> ({item.serial_number})</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {(!pendingActions?.overdue_returns?.length &&
+                      !pendingActions?.maintenance_needed?.length &&
+                      !pendingActions?.broken_tools?.length &&
+                      !pendingActions?.lost_tools?.length) && (
                         <div className="text-center py-4">
                           <CheckCircle className="h-8 w-8 text-green-400 mx-auto mb-2" />
                           <p className="text-sm text-gray-500">No pending actions</p>
                         </div>
                       )}
-                    </div>
                   </div>
-               </div>
-             </div>
+                </div>
+              </div>
+            </div>
 
-             {/* Employee Tool Assignments - Takes up 2/3 of the space */}
-             <div className="lg:col-span-2">
-               <div className="bg-white shadow-sm rounded-lg border border-gray-200">
-                 <div className="px-6 py-4 border-b border-gray-200">
-                   <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                     <MapPin className="h-5 w-5 text-blue-600 mr-2" />
-                     Employee Assignments
-                   </h3>
-                 </div>
-                 <div className="p-6">
-                   {employeeAssignments.length > 0 ? (
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                       {employeeAssignments.slice(0, 8).map((assignment, index) => (
-                         <div key={assignment.employee_id} className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg border border-gray-100">
-                           <div className="flex-1 min-w-0">
-                             <p className="text-sm font-medium text-gray-900 truncate">{assignment.employee_name}</p>
-                             <p className="text-xs text-gray-500 truncate">{assignment.toolbox_name}</p>
-                           </div>
-                           <div className="flex items-center space-x-2 flex-shrink-0">
-                             <div className="text-right">
-                               <span className="text-sm font-semibold text-gray-900">{assignment.tools_count} tools</span>
-                               <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(assignment.activity_color)}`}>
-                                 {assignment.activity_status}
-                               </span>
-                             </div>
-                           </div>
-                         </div>
-                       ))}
-                     </div>
-                   ) : (
-                     <div className="text-center py-8">
-                       <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                       <p className="text-sm text-gray-500">No employee assignments</p>
-                     </div>
-                   )}
-                 </div>
-               </div>
-             </div>
-           </div>
+            {/* Employee Tool Assignments - Takes up 2/3 of the space */}
+            <div className="lg:col-span-2">
+              <div className="bg-white shadow-sm rounded-lg border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                    <MapPin className="h-5 w-5 text-blue-600 mr-2" />
+                    Employee Assignments
+                  </h3>
+                </div>
+                <div className="p-6">
+                  {employeeAssignments.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {employeeAssignments.slice(0, 8).map((assignment) => (
+                        <div key={assignment.employee_id} className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg border border-gray-100">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{assignment.employee_name}</p>
+                            <p className="text-xs text-gray-500 truncate">{assignment.toolbox_name}</p>
+                          </div>
+                          <div className="flex items-center space-x-2 flex-shrink-0">
+                            <div className="text-right">
+                              <span className="text-sm font-semibold text-gray-900">{assignment.tools_count} tools</span>
+                              <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(assignment.activity_color)}`}>
+                                {assignment.activity_status}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-sm text-gray-500">No employee assignments</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </main>
     </div>

@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useRBAC } from '../contexts/RBACContext';
 import { toolApi } from '../services/api';
-import { 
-  ArrowRight, 
-  User, 
-  Package, 
-  Wrench, 
-  Calendar,
+import {
+  ArrowRight,
+  User,
+  Package,
+  Wrench,
   Search,
-  Filter,
   RefreshCw,
   Eye,
   Image as ImageIcon,
@@ -68,8 +66,7 @@ interface TransactionsTabProps {
 
 const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions = [], showOverdue = false }) => {
   const { hasPermission } = useRBAC();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<number | 'all'>('all');
   const [transactionTypes, setTransactionTypes] = useState<any[]>([]);
@@ -112,23 +109,23 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions = [], sh
   };
 
   const filteredTransactions = transactions.filter(transaction => {
-    const matchesSearch = 
+    const matchesSearch =
       transaction.tool?.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       transaction.tool?.SerialNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       transaction.transaction_type?.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       transaction.Comments?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesType = 
-      typeFilter === 'all' || 
+
+    const matchesType =
+      typeFilter === 'all' ||
       transaction.TransactionTypeID === typeFilter;
-    
+
     // Filter for overdue transactions if showOverdue is true
     let matchesOverdue = true;
     if (showOverdue) {
       // Check if this is a checkout transaction with an expected return date that's overdue
       const isCheckout = transaction.transaction_type?.Name === 'Check Out';
       const hasExpectedReturn = transaction.ExpectedReturnDate;
-      if (isCheckout && hasExpectedReturn) {
+      if (isCheckout && hasExpectedReturn && transaction.ExpectedReturnDate) {
         const expectedDate = new Date(transaction.ExpectedReturnDate);
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
@@ -137,7 +134,7 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions = [], sh
         matchesOverdue = false;
       }
     }
-    
+
     return matchesSearch && matchesType && matchesOverdue;
   });
 
@@ -166,13 +163,7 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions = [], sh
     );
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+
 
   return (
     <div>
@@ -225,16 +216,7 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions = [], sh
         </div>
       </div>
 
-      {/* Error Alert */}
-      {error && (
-        <div className="mb-4 rounded-md bg-red-50 p-4">
-          <div className="flex">
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">{error}</h3>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Transactions Table */}
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
@@ -337,15 +319,14 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions = [], sh
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      transaction.to_status?.Name === 'Available' 
-                        ? 'bg-green-100 text-green-800' 
-                        : transaction.to_status?.Name === 'In Use'
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${transaction.to_status?.Name === 'Available'
+                      ? 'bg-green-100 text-green-800'
+                      : transaction.to_status?.Name === 'In Use'
                         ? 'bg-yellow-100 text-yellow-800'
                         : transaction.to_status?.Name === 'Maintenance'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
                       {transaction.to_status?.Name || 'Unknown'}
                     </span>
                   </td>
@@ -363,7 +344,7 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions = [], sh
             </tbody>
           </table>
         </div>
-        
+
         {filteredTransactions.length === 0 && (
           <div className="text-center py-8">
             <ArrowRight className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -409,7 +390,7 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions = [], sh
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="font-medium text-gray-900">Date:</span>
@@ -420,18 +401,17 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions = [], sh
                             {new Date(selectedTransaction.TransactionDate).toLocaleTimeString()}
                           </div>
                         </div>
-                        
+
                         <div>
                           <span className="font-medium text-gray-900">Status:</span>
                           <div>
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              selectedTransaction.to_status?.Name === 'Available' ? 'bg-green-100 text-green-800' :
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${selectedTransaction.to_status?.Name === 'Available' ? 'bg-green-100 text-green-800' :
                               selectedTransaction.to_status?.Name === 'In Use' ? 'bg-blue-100 text-blue-800' :
-                              selectedTransaction.to_status?.Name === 'Maintenance' ? 'bg-yellow-100 text-yellow-800' :
-                              selectedTransaction.to_status?.Name === 'Lost' ? 'bg-red-100 text-red-800' :
-                              selectedTransaction.to_status?.Name === 'Broken' ? 'bg-orange-100 text-orange-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
+                                selectedTransaction.to_status?.Name === 'Maintenance' ? 'bg-yellow-100 text-yellow-800' :
+                                  selectedTransaction.to_status?.Name === 'Lost' ? 'bg-red-100 text-red-800' :
+                                    selectedTransaction.to_status?.Name === 'Broken' ? 'bg-orange-100 text-orange-800' :
+                                      'bg-gray-100 text-gray-800'
+                              }`}>
                               {selectedTransaction.to_status?.Name || 'Unknown'}
                             </span>
                           </div>

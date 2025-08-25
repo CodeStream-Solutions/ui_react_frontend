@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { useRBAC } from '../contexts/RBACContext';
 import { 
   TrendingUp, 
@@ -9,11 +8,8 @@ import {
   Activity,
   RefreshCw,
   AlertTriangle,
-  Clock,
-  Package,
   Target,
   Award,
-  Calendar
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -21,14 +17,8 @@ import {
   XAxis, 
   YAxis, 
   CartesianGrid, 
-  Tooltip, 
-  Legend, 
+  Tooltip,  
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
   Area,
   AreaChart
 } from 'recharts';
@@ -57,7 +47,6 @@ interface EmployeeActivity {
 }
 
 const PerformanceDashboard: React.FC = () => {
-  const { user } = useAuth();
   const { hasPermission, loading: rbacLoading } = useRBAC();
   
   const [loading, setLoading] = useState(true);
@@ -103,7 +92,7 @@ const PerformanceDashboard: React.FC = () => {
     if (!utilizationData) return { toolUsageData: [], employeeData: [] };
 
     // Tool usage chart data
-    const toolUsageData = utilizationData.most_used_tools.map((tool, index) => ({
+    const toolUsageData = utilizationData.most_used_tools.map((tool) => ({
       name: tool.tool_name,
       usage: tool.transaction_count,
       efficiency: Math.round((tool.transaction_count / selectedPeriod) * 100) / 100
@@ -155,7 +144,7 @@ const PerformanceDashboard: React.FC = () => {
 
   const { totalTransactions, avgToolsPerEmployee, utilizationTrend, topPerformerGain, topPerformerName } = calculateKPIs();
 
-  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16'];
+  // const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16'];
 
   if (loading) {
     return (
