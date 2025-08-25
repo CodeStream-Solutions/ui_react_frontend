@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: 'http://localhost:8000', // Your FastAPI server URL
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000', // API URL from environment variable
   headers: {
     'Content-Type': 'application/json',
   },
@@ -75,7 +75,7 @@ export const userApi = {
 
   // Employee management
   getEmployees: () => api.get('/users/'), // This returns users with employee data
-  
+
   // Direct employee management
   getAllEmployees: () => api.get('/employees/'),
   getActiveEmployees: () => api.get('/employees/active'),
@@ -112,19 +112,19 @@ export const toolApi = {
   // deleteTool removed - use activate/deactivate toggle instead
   changeToolStatus: (toolId: number, data: any) => api.patch(`/tools/${toolId}/status`, data),
   toggleToolActivation: (toolId: number) => api.patch(`/tools/${toolId}/toggle-activation`),
-  
+
   // Tool Categories
   getToolCategories: () => api.get('/tools/categories/'),
   getToolCategory: (categoryId: number) => api.get(`/tools/categories/${categoryId}`),
   createToolCategory: (data: any) => api.post('/tools/categories/', data),
   updateToolCategory: (categoryId: number, data: any) => api.put(`/tools/categories/${categoryId}`, data),
   deleteToolCategory: (categoryId: number) => api.delete(`/tools/categories/${categoryId}`),
-  
+
   // Tool Status Types
   // Status types (read-only - system managed)
   getToolStatusTypes: () => api.get('/tools/status-types/'),
   getToolStatusType: (statusTypeId: number) => api.get(`/tools/status-types/${statusTypeId}`),
-  
+
   // Toolboxes
   getToolboxes: () => api.get('/tools/toolboxes/'),
   getToolbox: (toolboxId: number) => api.get(`/tools/toolboxes/${toolboxId}`),
@@ -156,7 +156,7 @@ export const toolApi = {
   retireTool: (data: any) => api.post('/transactions/retire', data),
   getToolsInMaintenance: () => api.get('/transactions/tools-in-maintenance'),
   bulkCheckoutTools: (data: any) => api.post('/transactions/bulk-checkout', data),
-  
+
   // General Transaction CRUD
   createTransaction: (data: any) => api.post('/transactions/', data),
   updateTransaction: (transactionId: number, data: any) => api.put(`/transactions/${transactionId}`, data),
@@ -167,14 +167,14 @@ export const toolApi = {
   getTransactionImages: (transactionId: number) => api.get(`/transactions/${transactionId}/images`),
   deleteTransactionImage: (imageId: number) => api.delete(`/transactions/images/${imageId}`),
   getToolLatestImage: (toolId: number) => api.get(`/transactions/tools/${toolId}/latest-image`),
-  
+
   // File Upload
   uploadFiles: (files: FormData) => api.post('/api/files/upload', files, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
   }),
-  uploadBase64Images: (images: Array<{data: string, filename?: string}>) => api.post('/api/files/upload/base64', images),
+  uploadBase64Images: (images: Array<{ data: string, filename?: string }>) => api.post('/api/files/upload/base64', images),
 };
 
 export default api;
