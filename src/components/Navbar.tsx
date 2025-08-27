@@ -19,7 +19,7 @@ import {
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
-  const { isAdmin, isWarehouseManager } = useRBAC();
+  const { isAdmin, isWarehouseManager, isEmployee, hasRole, hasAnyRole, getUserRoles } = useRBAC();
   const location = useLocation();
   const [dashboardDropdownOpen, setDashboardDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -36,14 +36,26 @@ const Navbar: React.FC = () => {
     return ['/dashboard', '/performance-dashboard', '/alerts-dashboard', '/employee-dashboard', '/executive-dashboard'].includes(location.pathname);
   };
 
-  // Check if user is an employee (not admin or warehouse manager)
-  const isEmployee = () => {
-    return !isAdmin() && !isWarehouseManager();
+  // Check if user has employee role (can be combined with other roles)
+  const hasEmployeeRole = () => {
+    return hasRole('Employee');
   };
 
-  // Check if user is a warehouse manager (not admin or employee)
-  const isWarehouseManagerUser = () => {
-    return isWarehouseManager() && !isAdmin();
+  // Check if user has warehouse manager role (can be combined with other roles)
+  const hasWarehouseManagerRole = () => {
+    return hasRole('Warehouse Manager');
+  };
+
+  // Check if user is ONLY an employee (no other roles)
+  const isOnlyEmployee = () => {
+    const roles = getUserRoles();
+    return roles.length === 1 && roles.includes('Employee');
+  };
+
+  // Check if user is ONLY a warehouse manager (no other roles)
+  const isOnlyWarehouseManager = () => {
+    const roles = getUserRoles();
+    return roles.length === 1 && roles.includes('Warehouse Manager');
   };
 
   // Close dropdown when clicking outside
@@ -68,13 +80,16 @@ const Navbar: React.FC = () => {
             <div className="flex-shrink-0 flex items-center">
               <Shield className="h-8 w-8 text-blue-600" />
               <span className="ml-2 text-xl font-bold text-gray-900">
-                {isAdmin() ? "Admin Panel" : isWarehouseManagerUser() ? "Tool Management" : "My Tools"}
+                {isAdmin() ? "Admin Panel" : 
+                 hasWarehouseManagerRole() && hasEmployeeRole() ? "Tool Management & My Tools" :
+                 hasWarehouseManagerRole() ? "Tool Management" : 
+                 hasEmployeeRole() ? "My Tools" : "Dashboard"}
               </span>
             </div>
             
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              {/* For employees, only show "My Tools" link */}
-              {isEmployee() ? (
+              {/* Show "My Tools" link for users with Employee role */}
+              {hasEmployeeRole() && (
                 <Link
                   to="/employee-dashboard"
                   className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
@@ -86,8 +101,10 @@ const Navbar: React.FC = () => {
                   <User className="h-4 w-4 mr-1" />
                   My Tools
                 </Link>
-              ) : isWarehouseManagerUser() ? (
-                /* For warehouse managers, only show "Tool Management" link */
+              )}
+              
+              {/* Show "Tool Management" link for users with Warehouse Manager role */}
+              {hasWarehouseManagerRole() && (
                 <Link
                   to="/tool-management"
                   className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
@@ -99,7 +116,10 @@ const Navbar: React.FC = () => {
                   <Wrench className="h-4 w-4 mr-1" />
                   Tool Management
                 </Link>
-              ) : (
+              )}
+              
+              {/* For admins, show full navigation */}
+              {isAdmin() && (
                 /* For admins, show full navigation */
                 <>
                   {/* Dashboard Dropdown - only for admins */}
@@ -200,6 +220,7 @@ const Navbar: React.FC = () => {
                     )}
                   </div>
                   
+                  {/* Admin-only navigation items */}
                   {isAdmin() && (
                     <Link
                       to="/account-management"
@@ -228,7 +249,8 @@ const Navbar: React.FC = () => {
                     </Link>
                   )}
                   
-                  {(isAdmin() || isWarehouseManager()) && (
+                  {/* Tool Management - available to Admin and Warehouse Manager roles */}
+                  {(isAdmin() || hasWarehouseManagerRole()) && (
                     <Link
                       to="/tool-management"
                       className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${

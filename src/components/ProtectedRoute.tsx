@@ -17,7 +17,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   warehouseManagerOnly = false
 }) => {
   const { isAuthenticated, loading } = useAuth();
-  const { isAdmin, isWarehouseManager, loading: rbacLoading } = useRBAC();
+  const { isAdmin, isWarehouseManager, hasRole, loading: rbacLoading } = useRBAC();
 
   // Show loading spinner while authentication and RBAC are loading
   if (loading || rbacLoading) {
@@ -32,62 +32,66 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/login" replace />;
   }
 
-  // Check if user is an employee (not admin or warehouse manager)
-  const isEmployee = !isAdmin() && !isWarehouseManager();
+  // Check if user has specific roles (can have multiple roles)
+  const hasEmployeeRole = hasRole('Employee');
+  const hasWarehouseManagerRole = hasRole('Warehouse Manager');
   
-  // Check if user is a warehouse manager (not admin)
-  const isWarehouseManagerUser = isWarehouseManager() && !isAdmin();
+  // Check if user is ONLY an employee (no other roles)
+  const isOnlyEmployee = hasEmployeeRole && !hasWarehouseManagerRole && !isAdmin();
+  
+  // Check if user is ONLY a warehouse manager (no other roles)
+  const isOnlyWarehouseManager = hasWarehouseManagerRole && !hasEmployeeRole && !isAdmin();
 
   // Admins have access to everything - no restrictions
   if (isAdmin()) {
     return <>{children}</>;
   }
 
-  // If this route is employee-only, only employees can access it
+  // If this route is employee-only, users with Employee role can access it
   if (employeeOnly) {
-    if (isEmployee) {
+    if (hasEmployeeRole) {
       return <>{children}</>;
     } else {
-      // Warehouse managers get redirected to tool management
+      // Users without Employee role get redirected to tool management
       return <Navigate to="/tool-management" replace />;
     }
   }
 
-  // If this route is warehouse manager-only, only warehouse managers can access it
+  // If this route is warehouse manager-only, users with Warehouse Manager role can access it
   if (warehouseManagerOnly) {
-    if (isWarehouseManagerUser) {
+    if (hasWarehouseManagerRole) {
       return <>{children}</>;
     } else {
-      // Employees get redirected to employee dashboard
+      // Users without Warehouse Manager role get redirected to employee dashboard
       return <Navigate to="/employee-dashboard" replace />;
     }
   }
 
   // If this route has specific allowed roles, check if user has access
   if (allowedRoles.length > 0) {
-    const userRole = isWarehouseManagerUser ? 'warehouse_manager' : 'employee';
+    const userRole = hasWarehouseManagerRole ? 'warehouse_manager' : 'employee';
     if (allowedRoles.includes(userRole)) {
       return <>{children}</>;
     } else {
       // Redirect users to their appropriate dashboard
-      if (isEmployee) {
+      if (hasEmployeeRole) {
         return <Navigate to="/employee-dashboard" replace />;
-      } else if (isWarehouseManagerUser) {
+      } else if (hasWarehouseManagerRole) {
         return <Navigate to="/tool-management" replace />;
       }
     }
   }
 
-  // For employees, restrict access to only the employee dashboard
-  if (isEmployee) {
+  // For users with only Employee role, restrict access to only the employee dashboard
+  if (isOnlyEmployee) {
     const currentPath = window.location.pathname;
     if (currentPath !== '/employee-dashboard') {
       return <Navigate to="/employee-dashboard" replace />;
     }
   }
 
-  // For warehouse managers, restrict access to only the tool management page
-  if (isWarehouseManagerUser) {
+  // For users with only Warehouse Manager role, restrict access to only the tool management page
+  if (isOnlyWarehouseManager) {
     const currentPath = window.location.pathname;
     if (currentPath !== '/tool-management') {
       return <Navigate to="/tool-management" replace />;

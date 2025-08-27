@@ -27,6 +27,10 @@ interface RBACContextType {
   hasAllPermissions: (permissions: string[]) => boolean;
   isAdmin: () => boolean;
   isWarehouseManager: () => boolean;
+  isEmployee: () => boolean;
+  hasRole: (role: string) => boolean;
+  hasAnyRole: (roles: string[]) => boolean;
+  getUserRoles: () => string[];
   refreshPermissions: () => Promise<void>;
 }
 
@@ -146,6 +150,26 @@ export const RBACProvider: React.FC<RBACProviderProps> = ({ children }) => {
     return result;
   };
 
+  const isEmployee = (): boolean => {
+    if (!userPermissions) return false;
+    return userPermissions.roles.includes('Employee');
+  };
+
+  const hasRole = (role: string): boolean => {
+    if (!userPermissions) return false;
+    return userPermissions.roles.includes(role);
+  };
+
+  const hasAnyRole = (roles: string[]): boolean => {
+    if (!userPermissions) return false;
+    return roles.some(role => userPermissions.roles.includes(role));
+  };
+
+  const getUserRoles = (): string[] => {
+    if (!userPermissions) return [];
+    return userPermissions.roles;
+  };
+
   const refreshPermissions = async () => {
     await fetchUserPermissions();
   };
@@ -158,6 +182,10 @@ export const RBACProvider: React.FC<RBACProviderProps> = ({ children }) => {
     hasAllPermissions,
     isAdmin,
     isWarehouseManager,
+    isEmployee,
+    hasRole,
+    hasAnyRole,
+    getUserRoles,
     refreshPermissions,
   };
 

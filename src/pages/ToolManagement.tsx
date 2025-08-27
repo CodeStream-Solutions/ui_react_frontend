@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useRBAC } from '../contexts/RBACContext';
 import { toolApi, userApi } from '../services/api';
@@ -116,6 +116,9 @@ const ToolManagement: React.FC = () => {
   const [showDeactivationModal, setShowDeactivationModal] = useState(false);
   const [toolToDeactivate, setToolToDeactivate] = useState<{ id: number; name: string; serialNumber: string } | null>(null);
 
+  // Ref for error message scrolling
+  const errorRef = useRef<HTMLDivElement>(null);
+
   // Form states
   const [toolForm, setToolForm] = useState({
     SerialNumber: '',
@@ -172,6 +175,16 @@ const ToolManagement: React.FC = () => {
       }
     }
   }, [location.state]);
+
+  // Scroll to error message when error occurs
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      });
+    }
+  }, [error]);
 
   const loadData = async () => {
     try {
@@ -633,7 +646,7 @@ const ToolManagement: React.FC = () => {
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         {/* Alerts */}
         {error && (
-          <div className="mb-4 rounded-md bg-red-50 p-4">
+          <div ref={errorRef} className="mb-4 rounded-md bg-red-50 p-4">
             <div className="flex">
               <AlertCircle className="h-5 w-5 text-red-400" />
               <div className="ml-3">

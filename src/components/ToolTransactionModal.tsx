@@ -89,6 +89,16 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
   // Retire confirmation modal state
   const [showRetireConfirmation, setShowRetireConfirmation] = useState(false);
 
+  // Searchable dropdown states
+  const [employeeSearch, setEmployeeSearch] = useState('');
+  const [toolboxSearch, setToolboxSearch] = useState('');
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
+  const [showToolboxDropdown, setShowToolboxDropdown] = useState(false);
+
+  // Refs for click outside detection
+  const employeeDropdownRef = useRef<HTMLDivElement>(null);
+  const toolboxDropdownRef = useRef<HTMLDivElement>(null);
+
   // Form states for different transaction types
   const [checkoutForm, setCheckoutForm] = useState({
     ToolID: 0,
@@ -101,6 +111,60 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
   const employeesWithToolboxes = employees.filter(employee =>
     toolboxes.some(toolbox => toolbox.EmployeeID === employee.EmployeeID)
   );
+
+  // Filter employees for searchable dropdown
+  const filteredEmployees = employeesWithToolboxes
+    .filter(employee => {
+      const searchTerm = employeeSearch.toLowerCase().trim();
+      if (!searchTerm) return true;
+      
+      const fullName = `${employee.FirstName} ${employee.LastName}`.toLowerCase();
+      const email = employee.Email.toLowerCase();
+      const firstName = employee.FirstName.toLowerCase();
+      const lastName = employee.LastName.toLowerCase();
+      
+      return fullName.includes(searchTerm) || 
+             email.includes(searchTerm) || 
+             firstName.includes(searchTerm) || 
+             lastName.includes(searchTerm);
+    })
+    .sort((a, b) => `${a.FirstName} ${a.LastName}`.localeCompare(`${b.FirstName} ${b.LastName}`));
+
+  // Filter toolboxes for searchable dropdown
+  const filteredToolboxes = toolboxes
+    .filter(toolbox => {
+      const searchTerm = toolboxSearch.toLowerCase().trim();
+      if (!searchTerm) return true;
+      
+      const name = toolbox.Name.toLowerCase();
+      const description = (toolbox.Description || '').toLowerCase();
+      
+      return name.includes(searchTerm) || description.includes(searchTerm);
+    })
+    .sort((a, b) => a.Name.localeCompare(b.Name));
+
+  // Helper functions for dropdowns
+  const getEmployeeName = (employeeId: number) => {
+    const employee = employees.find(emp => emp.EmployeeID === employeeId);
+    return employee ? `${employee.FirstName} ${employee.LastName}` : 'Unknown Employee';
+  };
+
+  const getToolboxName = (toolboxId: number) => {
+    const toolbox = toolboxes.find(tb => tb.ToolboxID === toolboxId);
+    return toolbox ? toolbox.Name : 'Unknown Toolbox';
+  };
+
+  const handleEmployeeSelect = (employee: Employee) => {
+    setCheckoutForm({ ...checkoutForm, ToEmployeeID: employee.EmployeeID });
+    setEmployeeSearch(`${employee.FirstName} ${employee.LastName}`);
+    setShowEmployeeDropdown(false);
+  };
+
+  const handleToolboxSelect = (toolbox: Toolbox) => {
+    setTransferForm({ ...transferForm, ToToolboxID: toolbox.ToolboxID });
+    setToolboxSearch(toolbox.Name);
+    setShowToolboxDropdown(false);
+  };
 
   const [checkinForm, setCheckinForm] = useState({
     ToolID: 0,
@@ -126,6 +190,23 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
     ToolID: 0,
     Comments: ''
   });
+
+  // Click outside handler for dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (employeeDropdownRef.current && !employeeDropdownRef.current.contains(event.target as Node)) {
+        setShowEmployeeDropdown(false);
+      }
+      if (toolboxDropdownRef.current && !toolboxDropdownRef.current.contains(event.target as Node)) {
+        setShowToolboxDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Image management functions
 
@@ -517,6 +598,11 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
       ToolID: 0,
       Comments: ''
     });
+    // Reset search states
+    setEmployeeSearch('');
+    setToolboxSearch('');
+    setShowEmployeeDropdown(false);
+    setShowToolboxDropdown(false);
     // Reset image data
     setImageUrls([]);
     setUploadingImages(false);
@@ -543,22 +629,56 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Check out to Employee</label>
-              <select
-                required
-                value={checkoutForm.ToEmployeeID}
-                onChange={(e) => setCheckoutForm({ ...checkoutForm, ToEmployeeID: parseInt(e.target.value) })}
-                className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              >
-                <option value={0}>Select Employee</option>
-                {employeesWithToolboxes.map(employee => {
-                  const employeeToolbox = toolboxes.find(toolbox => toolbox.EmployeeID === employee.EmployeeID);
-                  return (
-                    <option key={employee.EmployeeID} value={employee.EmployeeID}>
-                      {employee.FirstName} {employee.LastName} ({employeeToolbox?.Name || 'Unknown Toolbox'})
-                    </option>
-                  );
-                })}
-              </select>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search employees..."
+                  value={employeeSearch}
+                  onChange={(e) => {
+                    setEmployeeSearch(e.target.value);
+                    setShowEmployeeDropdown(true);
+                  }}
+                  onFocus={() => setShowEmployeeDropdown(true)}
+                  className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  required
+                />
+                {showEmployeeDropdown && (
+                  <div 
+                    ref={employeeDropdownRef}
+                    className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto"
+                    onMouseDown={(e) => e.preventDefault()}
+                  >
+                    {filteredEmployees.length > 0 ? (
+                      filteredEmployees.map((employee) => {
+                        const employeeToolbox = toolboxes.find(toolbox => toolbox.EmployeeID === employee.EmployeeID);
+                        return (
+                          <button
+                            key={employee.EmployeeID}
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleEmployeeSelect(employee);
+                            }}
+                            className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                          >
+                            <div className="font-medium">{employee.FirstName} {employee.LastName}</div>
+                            <div className="text-sm text-gray-500">{employee.Email} • {employeeToolbox?.Name || 'Unknown Toolbox'}</div>
+                          </button>
+                        );
+                      })
+                    ) : employeeSearch ? (
+                      <div className="px-4 py-2 text-gray-500">No employees found</div>
+                    ) : (
+                      <div className="px-4 py-2 text-gray-500">Start typing to search employees</div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {checkoutForm.ToEmployeeID > 0 && (
+                <div className="mt-2 text-sm text-gray-600">
+                  Selected: {getEmployeeName(checkoutForm.ToEmployeeID)}
+                </div>
+              )}
               {employeesWithToolboxes.length === 0 && (
                 <p className="mt-1 text-sm text-red-500">
                   No employees with toolboxes available for checkout
@@ -700,21 +820,55 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Transfer to Toolbox</label>
-              <select
-                required
-                value={transferForm.ToToolboxID || 0}
-                onChange={(e) => setTransferForm({ ...transferForm, ToToolboxID: parseInt(e.target.value) })}
-                className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              >
-                <option value={0}>Select Toolbox</option>
-                {toolboxes
-                  .filter(toolbox => toolbox.ToolboxID !== tool.ToolboxID && toolbox.ToolboxID !== 1) // Exclude current location and warehouse
-                  .map(toolbox => (
-                    <option key={toolbox.ToolboxID} value={toolbox.ToolboxID}>
-                      {toolbox.Name}
-                    </option>
-                  ))}
-              </select>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search toolboxes..."
+                  value={toolboxSearch}
+                  onChange={(e) => {
+                    setToolboxSearch(e.target.value);
+                    setShowToolboxDropdown(true);
+                  }}
+                  onFocus={() => setShowToolboxDropdown(true)}
+                  className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  required
+                />
+                {showToolboxDropdown && (
+                  <div 
+                    ref={toolboxDropdownRef}
+                    className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto"
+                    onMouseDown={(e) => e.preventDefault()}
+                  >
+                    {filteredToolboxes
+                      .filter(toolbox => toolbox.ToolboxID !== tool.ToolboxID && toolbox.ToolboxID !== 1) // Exclude current location and warehouse
+                      .map((toolbox) => {
+                        const employee = employees.find(emp => emp.EmployeeID === toolbox.EmployeeID);
+                        return (
+                          <button
+                            key={toolbox.ToolboxID}
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleToolboxSelect(toolbox);
+                            }}
+                            className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                          >
+                            <div className="font-medium">{toolbox.Name}</div>
+                            <div className="text-sm text-gray-500">
+                              {employee ? `${employee.FirstName} ${employee.LastName}` : 'Unassigned'}
+                              {toolbox.Description && ` • ${toolbox.Description}`}
+                            </div>
+                          </button>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+              {transferForm.ToToolboxID > 0 && (
+                <div className="mt-2 text-sm text-gray-600">
+                  Selected: {getToolboxName(transferForm.ToToolboxID)}
+                </div>
+              )}
             </div>
 
             <div>

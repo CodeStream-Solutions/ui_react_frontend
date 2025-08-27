@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Package, 
   Plus, 
@@ -78,6 +78,27 @@ const ToolboxesTab: React.FC<ToolboxesTabProps> = ({
   const [toolboxToDelete, setToolboxToDelete] = useState<Toolbox | null>(null);
   const [toolboxToRetire, setToolboxToRetire] = useState<Toolbox | null>(null);
   const [retireError, setRetireError] = useState<string>('');
+
+  // Refs for click outside detection
+  const employeeDropdownRef = useRef<HTMLDivElement>(null);
+  const editEmployeeDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Click outside handler for employee dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (employeeDropdownRef.current && !employeeDropdownRef.current.contains(event.target as Node)) {
+        setShowEmployeeDropdown(false);
+      }
+      if (editEmployeeDropdownRef.current && !editEmployeeDropdownRef.current.contains(event.target as Node)) {
+        setShowEditEmployeeDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleEditClick = (toolbox: Toolbox) => {
     setEditingToolbox(toolbox);
@@ -447,14 +468,19 @@ const ToolboxesTab: React.FC<ToolboxesTabProps> = ({
                         setShowEmployeeDropdown(true);
                       }}
                       onFocus={() => setShowEmployeeDropdown(true)}
-                      onBlur={() => setTimeout(() => setShowEmployeeDropdown(false), 200)}
+
                       className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     />
                     {showEmployeeDropdown && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                      <div 
+                        ref={employeeDropdownRef}
+                        className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto"
+                        onMouseDown={(e) => e.preventDefault()}
+                      >
                         <button
                           type="button"
-                          onClick={() => {
+                          onMouseDown={(e) => {
+                            e.preventDefault();
                             setForm({...form, EmployeeID: null});
                             setEmployeeSearch('');
                             setShowEmployeeDropdown(false);
@@ -469,7 +495,10 @@ const ToolboxesTab: React.FC<ToolboxesTabProps> = ({
                             <button
                               key={employee.EmployeeID}
                               type="button"
-                              onClick={() => handleEmployeeSelect(employee)}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleEmployeeSelect(employee);
+                              }}
                               className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
                             >
                               <div className="font-medium">{employee.FirstName} {employee.LastName}</div>
@@ -571,14 +600,19 @@ const ToolboxesTab: React.FC<ToolboxesTabProps> = ({
                          setShowEditEmployeeDropdown(true);
                        }}
                        onFocus={() => setShowEditEmployeeDropdown(true)}
-                       onBlur={() => setTimeout(() => setShowEditEmployeeDropdown(false), 200)}
+
                        className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                      />
                      {showEditEmployeeDropdown && (
-                       <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                       <div 
+                         ref={editEmployeeDropdownRef}
+                         className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto"
+                         onMouseDown={(e) => e.preventDefault()}
+                       >
                          <button
                            type="button"
-                           onClick={() => {
+                           onMouseDown={(e) => {
+                             e.preventDefault();
                              setEditForm({...editForm, EmployeeID: null});
                              setEditEmployeeSearch('');
                              setShowEditEmployeeDropdown(false);
@@ -593,7 +627,10 @@ const ToolboxesTab: React.FC<ToolboxesTabProps> = ({
                               <button
                                 key={employee.EmployeeID}
                                 type="button"
-                                onClick={() => handleEmployeeSelect(employee, true)}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  handleEmployeeSelect(employee, true);
+                                }}
                                 className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
                               >
                                 <div className="font-medium">{employee.FirstName} {employee.LastName}</div>

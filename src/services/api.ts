@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: 'http://46.101.79.112', // API URL from environment variable
+  baseURL: 'http://localhost:8000', // API URL from environment variable
   headers: {
     'Content-Type': 'application/json',
   },
@@ -53,6 +53,7 @@ export const userApi = {
     FirstName: string;
     LastName: string;
     Phone?: string;
+    activate_immediately?: boolean;
   }) => api.post('/users/signup', data),
 
   generateOTP: (username: string) =>

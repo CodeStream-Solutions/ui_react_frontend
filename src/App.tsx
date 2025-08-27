@@ -2,7 +2,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './contexts/AuthContext';
 import { RBACProvider, useRBAC } from './contexts/RBACContext';
 import Login from './pages/Login';
-import Signup from './pages/Signup';
 import OTPVerification from './pages/OTPVerification';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -19,12 +18,17 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 // Component to handle default route based on user role
 const DefaultRoute = () => {
-  const { isAdmin, isWarehouseManager } = useRBAC();
+  const { isAdmin, hasRole } = useRBAC();
   
   if (isAdmin()) {
     return <Navigate to="/dashboard" replace />;
-  } else if (isWarehouseManager()) {
+  } else if (hasRole('Employee') && hasRole('Warehouse Manager')) {
+    // User has both roles - default to employee dashboard but they can access both
+    return <Navigate to="/employee-dashboard" replace />;
+  } else if (hasRole('Warehouse Manager')) {
     return <Navigate to="/tool-management" replace />;
+  } else if (hasRole('Employee')) {
+    return <Navigate to="/employee-dashboard" replace />;
   } else {
     return <Navigate to="/employee-dashboard" replace />;
   }
@@ -39,7 +43,6 @@ function App() {
             <Routes>
               {/* Public routes */}
               <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
               <Route path="/otp-verification" element={<OTPVerification />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
