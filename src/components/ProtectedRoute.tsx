@@ -10,14 +10,14 @@ interface ProtectedRouteProps {
   warehouseManagerOnly?: boolean;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
-  allowedRoles = [], 
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
+  allowedRoles = [],
   employeeOnly = false,
   warehouseManagerOnly = false
 }) => {
   const { isAuthenticated, loading } = useAuth();
-  const { isAdmin, isWarehouseManager, hasRole, loading: rbacLoading } = useRBAC();
+  const { isAdmin, hasRole, loading: rbacLoading } = useRBAC();
 
   // Show loading spinner while authentication and RBAC are loading
   if (loading || rbacLoading) {
@@ -35,10 +35,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Check if user has specific roles (can have multiple roles)
   const hasEmployeeRole = hasRole('Employee');
   const hasWarehouseManagerRole = hasRole('Warehouse Manager');
-  
+
   // Check if user is ONLY an employee (no other roles)
   const isOnlyEmployee = hasEmployeeRole && !hasWarehouseManagerRole && !isAdmin();
-  
+
   // Check if user is ONLY a warehouse manager (no other roles)
   const isOnlyWarehouseManager = hasWarehouseManagerRole && !hasEmployeeRole && !isAdmin();
 
