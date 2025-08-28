@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useRBAC } from '../contexts/RBACContext';
-import { 
-  Shield, 
-  Users, 
-  LogOut, 
+import {
+  Shield,
+  Users,
+  LogOut,
   User,
   Home,
   Wrench,
@@ -19,7 +19,7 @@ import {
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
-  const { isAdmin, isWarehouseManager, isEmployee, hasRole, hasAnyRole, getUserRoles } = useRBAC();
+  const { isAdmin, hasRole } = useRBAC();
   const location = useLocation();
   const [dashboardDropdownOpen, setDashboardDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -46,18 +46,6 @@ const Navbar: React.FC = () => {
     return hasRole('Warehouse Manager');
   };
 
-  // Check if user is ONLY an employee (no other roles)
-  const isOnlyEmployee = () => {
-    const roles = getUserRoles();
-    return roles.length === 1 && roles.includes('Employee');
-  };
-
-  // Check if user is ONLY a warehouse manager (no other roles)
-  const isOnlyWarehouseManager = () => {
-    const roles = getUserRoles();
-    return roles.length === 1 && roles.includes('Warehouse Manager');
-  };
-
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -80,44 +68,42 @@ const Navbar: React.FC = () => {
             <div className="flex-shrink-0 flex items-center">
               <Shield className="h-8 w-8 text-blue-600" />
               <span className="ml-2 text-xl font-bold text-gray-900">
-                {isAdmin() ? "Admin Panel" : 
-                 hasWarehouseManagerRole() && hasEmployeeRole() ? "Tool Management & My Tools" :
-                 hasWarehouseManagerRole() ? "Tool Management" : 
-                 hasEmployeeRole() ? "My Tools" : "Dashboard"}
+                {isAdmin() ? "Admin Panel" :
+                  hasWarehouseManagerRole() && hasEmployeeRole() ? "Tool Management & My Tools" :
+                    hasWarehouseManagerRole() ? "Tool Management" :
+                      hasEmployeeRole() ? "My Tools" : "Dashboard"}
               </span>
             </div>
-            
+
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               {/* Show "My Tools" link for users with Employee role */}
               {hasEmployeeRole() && (
                 <Link
                   to="/employee-dashboard"
-                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                    isActive('/employee-dashboard')
+                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive('/employee-dashboard')
                       ? 'border-blue-500 text-gray-900'
                       : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                  }`}
+                    }`}
                 >
                   <User className="h-4 w-4 mr-1" />
                   My Tools
                 </Link>
               )}
-              
+
               {/* Show "Tool Management" link for users with Warehouse Manager role */}
               {hasWarehouseManagerRole() && (
                 <Link
                   to="/tool-management"
-                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                    isActive('/tool-management')
+                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive('/tool-management')
                       ? 'border-blue-500 text-gray-900'
                       : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                  }`}
+                    }`}
                 >
                   <Wrench className="h-4 w-4 mr-1" />
                   Tool Management
                 </Link>
               )}
-              
+
               {/* For admins, show full navigation */}
               {isAdmin() && (
                 /* For admins, show full navigation */
@@ -126,28 +112,26 @@ const Navbar: React.FC = () => {
                   <div className="relative" ref={dropdownRef}>
                     <button
                       onClick={() => setDashboardDropdownOpen(!dashboardDropdownOpen)}
-                      className={`inline-flex items-center px-1 pt-1 pb-1 border-b-2 text-sm font-medium h-16 ${
-                        isDashboardActive()
+                      className={`inline-flex items-center px-1 pt-1 pb-1 border-b-2 text-sm font-medium h-16 ${isDashboardActive()
                           ? 'border-blue-500 text-gray-900'
                           : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                      }`}
+                        }`}
                     >
                       <Home className="h-4 w-4 mr-1" />
                       Dashboards
                       <ChevronDown className="h-4 w-4 ml-1" />
                     </button>
-                    
+
                     {dashboardDropdownOpen && (
                       <div className="absolute top-16 left-0 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
                         <div className="py-1">
                           <Link
                             to="/dashboard"
                             onClick={() => setDashboardDropdownOpen(false)}
-                            className={`flex items-center px-4 py-2 text-sm ${
-                              isActive('/dashboard')
+                            className={`flex items-center px-4 py-2 text-sm ${isActive('/dashboard')
                                 ? 'bg-blue-50 text-blue-700'
                                 : 'text-gray-700 hover:bg-gray-100'
-                            }`}
+                              }`}
                           >
                             <BarChart3 className="h-4 w-4 mr-3" />
                             <div>
@@ -158,11 +142,10 @@ const Navbar: React.FC = () => {
                           <Link
                             to="/performance-dashboard"
                             onClick={() => setDashboardDropdownOpen(false)}
-                            className={`flex items-center px-4 py-2 text-sm ${
-                              isActive('/performance-dashboard')
+                            className={`flex items-center px-4 py-2 text-sm ${isActive('/performance-dashboard')
                                 ? 'bg-blue-50 text-blue-700'
                                 : 'text-gray-700 hover:bg-gray-100'
-                            }`}
+                              }`}
                           >
                             <TrendingUp className="h-4 w-4 mr-3" />
                             <div>
@@ -173,11 +156,10 @@ const Navbar: React.FC = () => {
                           <Link
                             to="/alerts-dashboard"
                             onClick={() => setDashboardDropdownOpen(false)}
-                            className={`flex items-center px-4 py-2 text-sm ${
-                              isActive('/alerts-dashboard')
+                            className={`flex items-center px-4 py-2 text-sm ${isActive('/alerts-dashboard')
                                 ? 'bg-blue-50 text-blue-700'
                                 : 'text-gray-700 hover:bg-gray-100'
-                            }`}
+                              }`}
                           >
                             <AlertTriangle className="h-4 w-4 mr-3" />
                             <div>
@@ -188,11 +170,10 @@ const Navbar: React.FC = () => {
                           <Link
                             to="/employee-dashboard"
                             onClick={() => setDashboardDropdownOpen(false)}
-                            className={`flex items-center px-4 py-2 text-sm ${
-                              isActive('/employee-dashboard')
+                            className={`flex items-center px-4 py-2 text-sm ${isActive('/employee-dashboard')
                                 ? 'bg-blue-50 text-blue-700'
                                 : 'text-gray-700 hover:bg-gray-100'
-                            }`}
+                              }`}
                           >
                             <User className="h-4 w-4 mr-3" />
                             <div>
@@ -203,11 +184,10 @@ const Navbar: React.FC = () => {
                           <Link
                             to="/executive-dashboard"
                             onClick={() => setDashboardDropdownOpen(false)}
-                            className={`flex items-center px-4 py-2 text-sm ${
-                              isActive('/executive-dashboard')
+                            className={`flex items-center px-4 py-2 text-sm ${isActive('/executive-dashboard')
                                 ? 'bg-blue-50 text-blue-700'
                                 : 'text-gray-700 hover:bg-gray-100'
-                            }`}
+                              }`}
                           >
                             <Briefcase className="h-4 w-4 mr-3" />
                             <div>
@@ -219,59 +199,55 @@ const Navbar: React.FC = () => {
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Admin-only navigation items */}
                   {isAdmin() && (
                     <Link
                       to="/account-management"
-                      className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                        isActive('/account-management')
+                      className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive('/account-management')
                           ? 'border-blue-500 text-gray-900'
                           : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                      }`}
+                        }`}
                     >
                       <Users className="h-4 w-4 mr-1" />
                       Account Management
                     </Link>
                   )}
-                  
+
                   {isAdmin() && (
                     <Link
                       to="/employee-management"
-                      className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                        isActive('/employee-management')
+                      className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive('/employee-management')
                           ? 'border-blue-500 text-gray-900'
                           : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                      }`}
+                        }`}
                     >
                       <UserCheck className="h-4 w-4 mr-1" />
                       Employee Management
                     </Link>
                   )}
-                  
+
                   {/* Tool Management - available to Admin and Warehouse Manager roles */}
                   {(isAdmin() || hasWarehouseManagerRole()) && (
                     <Link
                       to="/tool-management"
-                      className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                        isActive('/tool-management')
+                      className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive('/tool-management')
                           ? 'border-blue-500 text-gray-900'
                           : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                      }`}
+                        }`}
                     >
                       <Wrench className="h-4 w-4 mr-1" />
                       Tool Management
                     </Link>
                   )}
-                  
+
                   {isAdmin() && (
                     <Link
                       to="/issue-management"
-                      className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                        isActive('/issue-management')
+                      className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive('/issue-management')
                           ? 'border-blue-500 text-gray-900'
                           : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                      }`}
+                        }`}
                     >
                       <AlertTriangle className="h-4 w-4 mr-1" />
                       Issue Management
@@ -281,13 +257,13 @@ const Navbar: React.FC = () => {
               )}
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-4">
             <div className="flex items-center text-sm text-gray-700">
               <User className="h-4 w-4 mr-2" />
               <span>{user?.employee?.FirstName} {user?.employee?.LastName}</span>
             </div>
-            
+
             <button
               onClick={handleLogout}
               className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
