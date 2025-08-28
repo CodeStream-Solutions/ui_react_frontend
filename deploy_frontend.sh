@@ -4,6 +4,8 @@ set -euo pipefail
 # Go to frontend source directory
 cd /var/www/frontend/ui_react_frontend
 
+git pull
+
 echo "➡️ Installing dependencies..."
 npm install
 
