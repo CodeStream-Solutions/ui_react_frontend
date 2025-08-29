@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRBAC } from '../contexts/RBACContext';
-import { toolApi } from '../services/api';
+import { getApiUrl, toolApi } from '../services/api';
 import {
   ArrowRight,
   User,
@@ -74,6 +74,7 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions = [], sh
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [transactionImages, setTransactionImages] = useState<any[]>([]);
   const [imagesLoading, setImagesLoading] = useState(false);
+  const apiUrl = getApiUrl();
 
   useEffect(() => {
     loadTransactionTypes();
@@ -511,7 +512,7 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions = [], sh
                           {transactionImages.map((image: any, index: number) => (
                             <div key={image.ImageID || index} className="space-y-2">
                               <img
-                                src={image.ImageURL.startsWith('http') ? image.ImageURL : `http://localhost:8000${image.ImageURL}`}
+                                src={image.ImageURL.startsWith('http') ? image.ImageURL : `${apiUrl}${image.ImageURL}`}
                                 alt={`Transaction image ${index + 1}`}
                                 className="max-w-full h-auto max-h-64 mx-auto rounded-lg shadow-sm"
                                 onError={(e) => {

@@ -11,7 +11,7 @@ import {
   X,
   FolderOpen
 } from 'lucide-react';
-import { toolApi } from '../services/api';
+import { getApiUrl, toolApi } from '../services/api';
 
 interface Tool {
   ToolID: number;
@@ -81,6 +81,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const apiUrl = getApiUrl();
 
   const [uploadingImages, setUploadingImages] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -1159,7 +1160,7 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
                             : `Image ${index + 1}`;
 
                         // For server URLs, prepend the base URL
-                        const fullImageUrl = isServerUrl ? `http://localhost:8000${url}` : url;
+                        const fullImageUrl = isServerUrl ? `${apiUrl}${url}` : url;
 
                         return (
                           <div key={index} className="flex items-center space-x-2 bg-gray-50 p-2 rounded-md">

@@ -17,7 +17,7 @@ import {
   Tag,
   X
 } from 'lucide-react';
-import api, { toolApi } from '../services/api';
+import api, { getApiUrl, toolApi } from '../services/api';
 import Navbar from '../components/Navbar';
 import Notification from '../components/Notification';
 
@@ -130,6 +130,7 @@ const EmployeeDashboard: React.FC = () => {
   const [myToolsSearchTerm, setMyToolsSearchTerm] = useState<string>('');
   const [availableToolsSearchTerm, setAvailableToolsSearchTerm] = useState<string>('');
   const [showAllMyTools, setShowAllMyTools] = useState<boolean>(false);
+  const apiUrl = getApiUrl();
 
   // Data states
   const [myToolsData, setMyToolsData] = useState<MyToolsData | null>(null);
@@ -1040,7 +1041,7 @@ const EmployeeDashboard: React.FC = () => {
                         </div>
                       ) : toolLatestImage ? (
                         <img
-                          src={toolLatestImage.startsWith('http') ? toolLatestImage : `http://localhost:8000${toolLatestImage}`}
+                          src={toolLatestImage.startsWith('http') ? toolLatestImage : `${apiUrl}${toolLatestImage}`}
                           alt={`${toolDetailsData.Name} latest image`}
                           className="w-full h-48 object-cover rounded-lg border border-gray-200"
                           onError={(e) => {

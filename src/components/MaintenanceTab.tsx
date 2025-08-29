@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toolApi } from '../services/api';
 import { X, FolderOpen, ImageIcon } from 'lucide-react';
+import { getApiUrl } from '../services/api';
 
 interface Tool {
   ToolID: number;
@@ -33,6 +34,7 @@ const MaintenanceTab: React.FC<MaintenanceTabProps> = ({ onSuccess, onError }) =
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [returnComments, setReturnComments] = useState('');
   const [showReturnModal, setShowReturnModal] = useState(false);
+  const apiUrl = getApiUrl();
   
   // Image upload state
   const [imageUrls, setImageUrls] = useState<string[]>([]);
@@ -402,7 +404,7 @@ const MaintenanceTab: React.FC<MaintenanceTabProps> = ({ onSuccess, onError }) =
                               : `Image ${index + 1}`;
                             
                             // For server URLs, prepend the base URL
-                            const fullImageUrl = isServerUrl ? `http://localhost:8000${url}` : url;
+                            const fullImageUrl = isServerUrl ? `${apiUrl}${url}` : url;
                             
                             return (
                               <div key={index} className="flex items-center space-x-2 bg-gray-50 p-2 rounded-md">

@@ -1,8 +1,25 @@
 import axios from 'axios';
 
 // Create axios instance with base configuration
+// const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// console.log('\n\n\n', apiUrl);
+
+export const getApiUrl = async () => {
+  let uiApiUrl;
+
+  if (import.meta.env.VITE_ENV === 'prod') {
+    uiApiUrl = 'http://46.101.79.112';
+  } else {
+    uiApiUrl = 'http://localhost:8000';
+  }
+
+  return uiApiUrl;
+}
+
+const apiUrl = await getApiUrl()
+
 const api = axios.create({
-  baseURL: 'http://46.101.79.112', // API URL from environment variable
+  baseURL: apiUrl, // API URL from environment variable
   headers: {
     'Content-Type': 'application/json',
   },
