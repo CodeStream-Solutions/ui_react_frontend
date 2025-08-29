@@ -1160,7 +1160,8 @@ const ToolTransactionModal: React.FC<ToolTransactionModalProps> = ({
                             : `Image ${index + 1}`;
 
                         // For server URLs, prepend the base URL
-                        const fullImageUrl = isServerUrl ? `${apiUrl}${url}` : url;
+                        // const fullImageUrl = isServerUrl ? `${apiUrl}${url}` : url;
+                        const fullImageUrl =`${apiUrl}${url}`;
 
                         return (
                           <div key={index} className="flex items-center space-x-2 bg-gray-50 p-2 rounded-md">

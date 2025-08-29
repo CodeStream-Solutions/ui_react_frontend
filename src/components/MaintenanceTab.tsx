@@ -35,7 +35,7 @@ const MaintenanceTab: React.FC<MaintenanceTabProps> = ({ onSuccess, onError }) =
   const [returnComments, setReturnComments] = useState('');
   const [showReturnModal, setShowReturnModal] = useState(false);
   const apiUrl = getApiUrl();
-  
+
   // Image upload state
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
@@ -86,7 +86,7 @@ const MaintenanceTab: React.FC<MaintenanceTabProps> = ({ onSuccess, onError }) =
       // Validate files before uploading
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        
+
         // Validate file type
         if (!file.type.startsWith('image/')) {
           onError(`File ${file.name} is not an image`);
@@ -110,11 +110,11 @@ const MaintenanceTab: React.FC<MaintenanceTabProps> = ({ onSuccess, onError }) =
 
       // Upload files to server
       const response = await toolApi.uploadFiles(formData);
-      
+
       if (response.data.uploaded_files && response.data.uploaded_files.length > 0) {
         const newUrls = response.data.uploaded_files.map((file: any) => file.url);
         setImageUrls([...imageUrls, ...newUrls]);
-        
+
         if (response.data.errors && response.data.errors.length > 0) {
           onError(`Some files had issues: ${response.data.errors.join(', ')}`);
         }
@@ -149,7 +149,7 @@ const MaintenanceTab: React.FC<MaintenanceTabProps> = ({ onSuccess, onError }) =
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    
+
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
       // Create a fake event to reuse handleFileUpload
@@ -170,7 +170,7 @@ const MaintenanceTab: React.FC<MaintenanceTabProps> = ({ onSuccess, onError }) =
         Comments: returnComments,
         ImageURLs: imageUrls.length > 0 ? imageUrls : undefined
       });
-      
+
       onSuccess(`Tool "${selectedTool.Name}" has been returned from maintenance and is now available.`);
       setShowReturnModal(false);
       setSelectedTool(null);
@@ -343,7 +343,7 @@ const MaintenanceTab: React.FC<MaintenanceTabProps> = ({ onSuccess, onError }) =
                     <ImageIcon className="h-4 w-4 mr-2" />
                     Maintenance Images (Optional)
                   </h4>
-                  
+
                   {/* Upload Methods */}
                   <div className="space-y-4">
                     {/* File Upload */}
@@ -354,13 +354,12 @@ const MaintenanceTab: React.FC<MaintenanceTabProps> = ({ onSuccess, onError }) =
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
                         onClick={openFileDialog}
-                        className={`relative cursor-pointer border-2 border-dashed rounded-md p-6 text-center transition-colors ${
-                          isDragOver
-                            ? 'border-green-400 bg-green-50'
-                            : uploadingImages
+                        className={`relative cursor-pointer border-2 border-dashed rounded-md p-6 text-center transition-colors ${isDragOver
+                          ? 'border-green-400 bg-green-50'
+                          : uploadingImages
                             ? 'border-gray-200 bg-gray-50'
                             : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
-                        } ${uploadingImages ? 'cursor-not-allowed' : ''}`}
+                          } ${uploadingImages ? 'cursor-not-allowed' : ''}`}
                       >
                         {uploadingImages ? (
                           <div className="flex flex-col items-center">
@@ -397,15 +396,16 @@ const MaintenanceTab: React.FC<MaintenanceTabProps> = ({ onSuccess, onError }) =
                           {imageUrls.map((url, index) => {
                             const isServerUrl = url.startsWith('/api/files/');
                             const isExternalUrl = url.startsWith('http');
-                            const displayText = isServerUrl 
+                            const displayText = isServerUrl
                               ? `Uploaded file ${index + 1}`
                               : isExternalUrl
-                              ? `External image ${index + 1}`
-                              : `Image ${index + 1}`;
-                            
+                                ? `External image ${index + 1}`
+                                : `Image ${index + 1}`;
+
                             // For server URLs, prepend the base URL
-                            const fullImageUrl = isServerUrl ? `${apiUrl}${url}` : url;
-                            
+                            // const fullImageUrl = isServerUrl ? `${apiUrl}${url}` : url;
+                            const fullImageUrl = `${apiUrl}${url}`;
+
                             return (
                               <div key={index} className="flex items-center space-x-2 bg-gray-50 p-2 rounded-md">
                                 <div className="flex-shrink-0">

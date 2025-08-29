@@ -1041,7 +1041,7 @@ const EmployeeDashboard: React.FC = () => {
                         </div>
                       ) : toolLatestImage ? (
                         <img
-                          src={toolLatestImage.startsWith('http') ? toolLatestImage : `${apiUrl}${toolLatestImage}`}
+                          src={`${apiUrl}${toolLatestImage}`}
                           alt={`${toolDetailsData.Name} latest image`}
                           className="w-full h-48 object-cover rounded-lg border border-gray-200"
                           onError={(e) => {

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useRBAC } from '../contexts/RBACContext';
-import { 
-  Wrench, 
-  Plus, 
-  Search, 
-  Eye, 
+import {
+  Wrench,
+  Plus,
+  Search,
+  Eye,
   EyeOff,
   Package,
   Tag,
@@ -130,7 +130,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
   const { hasPermission, isAdmin, isWarehouseManager } = useRBAC();
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const apiUrl = getApiUrl();
-  
+
   // Helper function to check if user can manage tool transactions
   const canManageToolTransactions = () => {
     return isAdmin() || isWarehouseManager() || hasPermission('create_transactions');
@@ -145,7 +145,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
   const [toolDetailsData, setToolDetailsData] = useState<Tool | null>(null);
   const [toolLatestImage, setToolLatestImage] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
-  
+
   // Edit tool states
   const [isEditingTool, setIsEditingTool] = useState(false);
   const [editToolForm, setEditToolForm] = useState({
@@ -159,21 +159,21 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
 
   const validateDate = (dateString: string): boolean => {
     if (!dateString) return true; // Empty date is valid (optional field)
-    
+
     // Check format
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(dateString)) {
       setDateError('Invalid date format. Please use YYYY-MM-DD format.');
       return false;
     }
-    
+
     // Check if it's a real date
     const date = new Date(dateString);
     if (isNaN(date.getTime())) {
       setDateError('Invalid date. Please enter a valid date.');
       return false;
     }
-    
+
     // Check if it's not in the future
     const today = new Date();
     today.setHours(23, 59, 59, 999); // End of today
@@ -181,14 +181,14 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
       setDateError('Purchase date cannot be in the future.');
       return false;
     }
-    
+
     // Check if it's not too far in the past (before 1900)
     const minDate = new Date('1900-01-01');
     if (date < minDate) {
       setDateError('Purchase date cannot be before 1900.');
       return false;
     }
-    
+
     setDateError(null);
     return true;
   };
@@ -244,18 +244,18 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
     try {
       // Import toolApi dynamically or add it to props
       const { toolApi } = await import('../services/api');
-      
+
       await toolApi.changeToolStatus(statusChangeTool.ToolID, {
         new_status_id: newStatusId,
         comments: statusChangeComments
       });
-      
+
       // Close modal and refresh data
       setShowStatusChangeModal(false);
       setStatusChangeTool(null);
       setNewStatusId(0);
       setStatusChangeComments('');
-      
+
       // The parent component should refresh the tools list
       window.location.reload(); // Simple refresh for now
     } catch (error: any) {
@@ -273,7 +273,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
 
   const handleEditToolClick = () => {
     if (!toolDetailsData) return;
-    
+
     setEditToolForm({
       SerialNumber: toolDetailsData.SerialNumber,
       Name: toolDetailsData.Name,
@@ -299,19 +299,19 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
 
   const handleSaveEdit = async () => {
     if (!toolDetailsData) return;
-    
+
     try {
       setDateError(null);
       setEditError('');
-      
+
       // Validate date if provided
       if (editToolForm.PurchaseDate && !validateDate(editToolForm.PurchaseDate)) {
         return; // validateDate already sets the appropriate error message
       }
-      
+
       // Prepare update data - only include changed fields
       const updateData: any = {};
-      
+
       if (editToolForm.SerialNumber !== toolDetailsData.SerialNumber) {
         updateData.SerialNumber = editToolForm.SerialNumber;
       }
@@ -327,11 +327,11 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
       if (editToolForm.CategoryID !== (toolDetailsData.CategoryID || undefined)) {
         updateData.CategoryID = editToolForm.CategoryID || null;
       }
-      
+
       // Only make API call if there are changes
       if (Object.keys(updateData).length > 0) {
         await toolApi.updateTool(toolDetailsData.ToolID, updateData);
-        
+
         // Try to refresh the tool data, but don't fail if it doesn't work
         try {
           const updatedTool = await toolApi.getTool(toolDetailsData.ToolID);
@@ -340,12 +340,12 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
           console.warn('Failed to refresh tool data after update:', refreshError);
           // Continue anyway - the update was successful
         }
-        
+
         // Refresh the tools list by calling parent's onUpdate if available
         if (onUpdate) {
           onUpdate();
         }
-        
+
         setIsEditingTool(false);
         onSuccess('Tool updated successfully!');
       } else {
@@ -353,7 +353,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
         setIsEditingTool(false);
         onSuccess('No changes were made.');
       }
-      
+
     } catch (error: any) {
       console.error('Failed to update tool:', error);
       setEditError('Failed to update tool: ' + (error.response?.data?.detail || error.message));
@@ -366,7 +366,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
       setDateError(null);
     }
   }, [showModal]);
-  
+
   return (
     <div>
       {/* Filters */}
@@ -478,9 +478,8 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {tools.map((tool) => (
-                <tr key={tool.ToolID} className={`hover:bg-gray-50 ${
-                  !tool.IsActive ? 'bg-gray-100 opacity-75' : ''
-                }`}>
+                <tr key={tool.ToolID} className={`hover:bg-gray-50 ${!tool.IsActive ? 'bg-gray-100 opacity-75' : ''
+                  }`}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
@@ -531,15 +530,14 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        tool.status?.Name === 'Available' 
-                          ? 'bg-green-100 text-green-800' 
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${tool.status?.Name === 'Available'
+                          ? 'bg-green-100 text-green-800'
                           : tool.status?.Name === 'In Use'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : tool.status?.Name === 'Maintenance'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : tool.status?.Name === 'Maintenance'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-gray-100 text-gray-800'
+                        }`}>
                         {tool.status?.Name || 'Unknown'}
                       </span>
                     </div>
@@ -557,45 +555,44 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                       {canManageToolTransactions() && (
                         <button
                           onClick={() => tool.IsActive ? handleTransactionClick(tool) : null}
-                          className={`${
-                            tool.IsActive 
-                              ? "text-blue-600 hover:text-blue-900" 
+                          className={`${tool.IsActive
+                              ? "text-blue-600 hover:text-blue-900"
                               : "text-gray-400 cursor-not-allowed"
-                          }`}
+                            }`}
                           disabled={!tool.IsActive}
                           title={(() => {
-                             if (!tool.IsActive) {
-                               return "Tool is inactive - activate to enable transactions";
-                             }
-                             
-                             if (!canManageToolTransactions()) {
-                               return "Admin or Warehouse Manager access required for tool transactions";
-                             }
-                             
-                             const isInWarehouse = tool.ToolboxID === 1 || !tool.ToolboxID;
-                             const isInUse = tool.status?.Name === 'In Use';
-                             const isInMaintenance = tool.status?.Name === 'Maintenance';
-                             const isLost = tool.status?.Name === 'Lost';
-                             const isBroken = tool.status?.Name === 'Broken';
-                             
-                             if (isLost) {
-                               return "Check In Tool (When Found) - Admin/Warehouse Manager Only";
-                             } else if (isBroken) {
-                               return "Send for Maintenance or Retire (Broken) - Admin/Warehouse Manager Only";
-                             } else if (isInWarehouse && !isInUse && !isInMaintenance) {
-                               return "Check Out Tool - Admin/Warehouse Manager Only";
-                             } else if (!isInWarehouse && isInUse && !isInMaintenance) {
-                               return "Check In Tool - Admin/Warehouse Manager Only";
-                             } else if (!isInWarehouse && !isInMaintenance) {
-                               return "Transfer Tool - Admin/Warehouse Manager Only";
-                             } else if (!isInMaintenance && !isInUse) {
-                               return "Send for Maintenance - Admin/Warehouse Manager Only";
-                             } else if (isInUse) {
-                               return "Check In First (In Use) - Admin/Warehouse Manager Only";
-                             } else {
-                               return "Manage Tool - Admin/Warehouse Manager Only";
-                             }
-                           })()}
+                            if (!tool.IsActive) {
+                              return "Tool is inactive - activate to enable transactions";
+                            }
+
+                            if (!canManageToolTransactions()) {
+                              return "Admin or Warehouse Manager access required for tool transactions";
+                            }
+
+                            const isInWarehouse = tool.ToolboxID === 1 || !tool.ToolboxID;
+                            const isInUse = tool.status?.Name === 'In Use';
+                            const isInMaintenance = tool.status?.Name === 'Maintenance';
+                            const isLost = tool.status?.Name === 'Lost';
+                            const isBroken = tool.status?.Name === 'Broken';
+
+                            if (isLost) {
+                              return "Check In Tool (When Found) - Admin/Warehouse Manager Only";
+                            } else if (isBroken) {
+                              return "Send for Maintenance or Retire (Broken) - Admin/Warehouse Manager Only";
+                            } else if (isInWarehouse && !isInUse && !isInMaintenance) {
+                              return "Check Out Tool - Admin/Warehouse Manager Only";
+                            } else if (!isInWarehouse && isInUse && !isInMaintenance) {
+                              return "Check In Tool - Admin/Warehouse Manager Only";
+                            } else if (!isInWarehouse && !isInMaintenance) {
+                              return "Transfer Tool - Admin/Warehouse Manager Only";
+                            } else if (!isInMaintenance && !isInUse) {
+                              return "Send for Maintenance - Admin/Warehouse Manager Only";
+                            } else if (isInUse) {
+                              return "Check In First (In Use) - Admin/Warehouse Manager Only";
+                            } else {
+                              return "Manage Tool - Admin/Warehouse Manager Only";
+                            }
+                          })()}
                         >
                           <ArrowRight className="h-4 w-4" />
                         </button>
@@ -646,7 +643,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                   <XCircle className="h-6 w-6" />
                 </button>
               </div>
-              
+
               <form onSubmit={(e) => {
                 e.preventDefault();
                 if (dateError) {
@@ -660,47 +657,46 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                     type="text"
                     required
                     value={form.SerialNumber}
-                    onChange={(e) => setForm({...form, SerialNumber: e.target.value})}
+                    onChange={(e) => setForm({ ...form, SerialNumber: e.target.value })}
                     className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Name</label>
                   <input
                     type="text"
                     required
                     value={form.Name}
-                    onChange={(e) => setForm({...form, Name: e.target.value})}
+                    onChange={(e) => setForm({ ...form, Name: e.target.value })}
                     className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Description</label>
                   <textarea
                     value={form.Description}
-                    onChange={(e) => setForm({...form, Description: e.target.value})}
+                    onChange={(e) => setForm({ ...form, Description: e.target.value })}
                     rows={3}
                     className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Purchase Date</label>
                   <input
                     type="date"
                     value={form.PurchaseDate}
                     onChange={(e) => {
-                      setForm({...form, PurchaseDate: e.target.value});
+                      setForm({ ...form, PurchaseDate: e.target.value });
                       validateDate(e.target.value);
                     }}
                     onBlur={(e) => validateDate(e.target.value)}
                     min="1900-01-01"
                     max={new Date().toISOString().split('T')[0]} // Prevent future dates
-                    className={`mt-1 block w-full rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${
-                      dateError ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`mt-1 block w-full rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${dateError ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     placeholder="YYYY-MM-DD"
                   />
                   {dateError ? (
@@ -711,12 +707,12 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                     </p>
                   )}
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Category</label>
                   <select
                     value={form.CategoryID || ''}
-                    onChange={(e) => setForm({...form, CategoryID: e.target.value ? parseInt(e.target.value) : undefined})}
+                    onChange={(e) => setForm({ ...form, CategoryID: e.target.value ? parseInt(e.target.value) : undefined })}
                     className="mt-1 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   >
                     <option value="">Select Category</option>
@@ -727,7 +723,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                     ))}
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Status</label>
                   <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 sm:text-sm">
@@ -737,7 +733,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                     New tools are automatically set to Available status
                   </p>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Toolbox</label>
                   <div className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 sm:text-sm">
@@ -747,19 +743,19 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                     New tools are automatically placed in the warehouse
                   </p>
                 </div>
-                
+
                 <div className="flex items-center">
                   <input
                     type="checkbox"
                     checked={form.IsActive}
-                    onChange={(e) => setForm({...form, IsActive: e.target.checked})}
+                    onChange={(e) => setForm({ ...form, IsActive: e.target.checked })}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
                   <label className="ml-2 block text-sm text-gray-900">
                     Active
                   </label>
                 </div>
-                
+
                 <div className="flex justify-end space-x-3">
                   <button
                     type="button"
@@ -775,11 +771,10 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                   <button
                     type="submit"
                     disabled={!!dateError}
-                    className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium ${
-                      dateError 
-                        ? 'bg-gray-400 cursor-not-allowed' 
+                    className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium ${dateError
+                        ? 'bg-gray-400 cursor-not-allowed'
                         : 'text-white bg-blue-600 hover:bg-blue-700'
-                    }`}
+                      }`}
                   >
                     Create Tool
                   </button>
@@ -821,7 +816,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                     Change the status of <strong>{statusChangeTool.Name}</strong> (Serial: {statusChangeTool.SerialNumber})
                   </p>
                 </div>
-                
+
                 <div className="mt-4 space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 text-left">
@@ -851,7 +846,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                     <div className="mt-2 text-xs text-gray-600">
                       {statusChangeTool?.status?.Name === 'Lost' ? (
                         <p className="text-red-600 mt-1">
-                          <strong>Lost tools cannot be changed to other statuses.</strong> 
+                          <strong>Lost tools cannot be changed to other statuses.</strong>
                           Use "Check In" transaction when the tool is found.
                         </p>
                       ) : (
@@ -865,7 +860,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                       )}
                     </div>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 text-left">
                       Comments
@@ -879,7 +874,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                     />
                   </div>
                 </div>
-                
+
                 <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
                   <button
                     onClick={handleStatusChange}
@@ -928,7 +923,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                     <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider">
                       {isEditingTool ? 'Edit Tool Information' : 'Basic Information'}
                     </h4>
-                    
+
                     {isEditingTool ? (
                       /* Edit Form */
                       <div className="mt-2 space-y-4">
@@ -943,34 +938,34 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                             </div>
                           </div>
                         )}
-                        
+
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Tool Name</label>
                           <input
                             type="text"
                             value={editToolForm.Name}
-                            onChange={(e) => setEditToolForm({...editToolForm, Name: e.target.value})}
+                            onChange={(e) => setEditToolForm({ ...editToolForm, Name: e.target.value })}
                             className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                             required
                           />
                         </div>
-                        
+
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Serial Number</label>
                           <input
                             type="text"
                             value={editToolForm.SerialNumber}
-                            onChange={(e) => setEditToolForm({...editToolForm, SerialNumber: e.target.value})}
+                            onChange={(e) => setEditToolForm({ ...editToolForm, SerialNumber: e.target.value })}
                             className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                             required
                           />
                         </div>
-                        
+
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Category</label>
                           <select
                             value={editToolForm.CategoryID || ''}
-                            onChange={(e) => setEditToolForm({...editToolForm, CategoryID: e.target.value ? parseInt(e.target.value) : undefined})}
+                            onChange={(e) => setEditToolForm({ ...editToolForm, CategoryID: e.target.value ? parseInt(e.target.value) : undefined })}
                             className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                           >
                             <option value="">No Category</option>
@@ -981,13 +976,13 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                             ))}
                           </select>
                         </div>
-                        
+
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Purchase Date</label>
                           <input
                             type="date"
                             value={editToolForm.PurchaseDate}
-                            onChange={(e) => setEditToolForm({...editToolForm, PurchaseDate: e.target.value})}
+                            onChange={(e) => setEditToolForm({ ...editToolForm, PurchaseDate: e.target.value })}
                             min="1900-01-01"
                             max={new Date().toISOString().split('T')[0]}
                             className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
@@ -996,32 +991,31 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                             <p className="mt-1 text-sm text-red-600">{dateError}</p>
                           )}
                         </div>
-                        
+
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Description</label>
                           <textarea
                             value={editToolForm.Description}
-                            onChange={(e) => setEditToolForm({...editToolForm, Description: e.target.value})}
+                            onChange={(e) => setEditToolForm({ ...editToolForm, Description: e.target.value })}
                             rows={3}
                             className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                             placeholder="Optional description..."
                           />
                         </div>
-                        
+
                         {/* Read-only fields during edit */}
                         <div className="pt-2 border-t border-gray-200">
                           <p className="text-xs text-gray-500 mb-2">Read-only information:</p>
                           <div className="space-y-1">
                             <div>
                               <span className="text-xs font-medium text-gray-600">Status:</span>
-                              <span className={`ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                toolDetailsData.status?.Name === 'Available' ? 'bg-green-100 text-green-800' :
-                                toolDetailsData.status?.Name === 'In Use' ? 'bg-blue-100 text-blue-800' :
-                                toolDetailsData.status?.Name === 'Maintenance' ? 'bg-yellow-100 text-yellow-800' :
-                                toolDetailsData.status?.Name === 'Lost' ? 'bg-red-100 text-red-800' :
-                                toolDetailsData.status?.Name === 'Broken' ? 'bg-orange-100 text-orange-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}>
+                              <span className={`ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${toolDetailsData.status?.Name === 'Available' ? 'bg-green-100 text-green-800' :
+                                  toolDetailsData.status?.Name === 'In Use' ? 'bg-blue-100 text-blue-800' :
+                                    toolDetailsData.status?.Name === 'Maintenance' ? 'bg-yellow-100 text-yellow-800' :
+                                      toolDetailsData.status?.Name === 'Lost' ? 'bg-red-100 text-red-800' :
+                                        toolDetailsData.status?.Name === 'Broken' ? 'bg-orange-100 text-orange-800' :
+                                          'bg-gray-100 text-gray-800'
+                                }`}>
                                 {toolDetailsData.status?.Name || 'Unknown'}
                               </span>
                             </div>
@@ -1047,14 +1041,13 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                         </div>
                         <div>
                           <span className="text-sm font-medium text-gray-900">Status:</span>
-                          <span className={`ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            toolDetailsData.status?.Name === 'Available' ? 'bg-green-100 text-green-800' :
-                            toolDetailsData.status?.Name === 'In Use' ? 'bg-blue-100 text-blue-800' :
-                            toolDetailsData.status?.Name === 'Maintenance' ? 'bg-yellow-100 text-yellow-800' :
-                            toolDetailsData.status?.Name === 'Lost' ? 'bg-red-100 text-red-800' :
-                            toolDetailsData.status?.Name === 'Broken' ? 'bg-orange-100 text-orange-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
+                          <span className={`ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${toolDetailsData.status?.Name === 'Available' ? 'bg-green-100 text-green-800' :
+                              toolDetailsData.status?.Name === 'In Use' ? 'bg-blue-100 text-blue-800' :
+                                toolDetailsData.status?.Name === 'Maintenance' ? 'bg-yellow-100 text-yellow-800' :
+                                  toolDetailsData.status?.Name === 'Lost' ? 'bg-red-100 text-red-800' :
+                                    toolDetailsData.status?.Name === 'Broken' ? 'bg-orange-100 text-orange-800' :
+                                      'bg-gray-100 text-gray-800'
+                            }`}>
                             {toolDetailsData.status?.Name || 'Unknown'}
                           </span>
                         </div>
@@ -1104,7 +1097,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                       ) : toolLatestImage ? (
                         <div className="space-y-2">
                           <img
-                            src={toolLatestImage.startsWith('http') ? toolLatestImage : `${apiUrl}${toolLatestImage}`}
+                            src={`${apiUrl}${toolLatestImage}`}
                             alt={`Latest image of ${toolDetailsData.Name}`}
                             className="max-w-full h-auto max-h-48 mx-auto rounded-lg shadow-sm"
                             onError={(e) => {
