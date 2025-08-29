@@ -510,6 +510,7 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions = [], sh
                       ) : transactionImages.length > 0 ? (
                         <div className="grid grid-cols-1 gap-4">
                           {transactionImages.map((image: any, index: number) => (
+                            console.log(`Hoe de fok is die moontlik: ${apiUrl}${image.ImageURL}`),
                             <div key={image.ImageID || index} className="space-y-2">
                               <img
                                 src={`${apiUrl}${image.ImageURL}`}
