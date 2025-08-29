@@ -364,7 +364,7 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions = [], sh
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium text-gray-900 flex items-center">
                   <ArrowRight className="h-5 w-5 text-blue-600 mr-2" />
-                  Transaction Details
+                  `Transaction Details {apiUrl}`
                 </h3>
                 <button
                   onClick={() => setShowTransactionDetailsModal(false)}
