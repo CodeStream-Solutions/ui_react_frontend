@@ -19,7 +19,7 @@ import {
   XCircle
 } from 'lucide-react';
 import ToolTransactionModal from './ToolTransactionModal';
-import { getApiUrl, toolApi } from '../services/api';
+import { uiApiUrl, toolApi } from '../services/api';
 
 interface Tool {
   ToolID: number;
@@ -129,7 +129,6 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
 }) => {
   const { hasPermission, isAdmin, isWarehouseManager } = useRBAC();
   const [showTransactionModal, setShowTransactionModal] = useState(false);
-  const apiUrl = getApiUrl();
 
   // Helper function to check if user can manage tool transactions
   const canManageToolTransactions = () => {
@@ -1097,7 +1096,7 @@ const ToolsTab: React.FC<ToolsTabProps> = ({
                       ) : toolLatestImage ? (
                         <div className="space-y-2">
                           <img
-                            src={`${apiUrl}${toolLatestImage}`}
+                            src={`${uiApiUrl}${toolLatestImage}`}
                             alt={`Latest image of ${toolDetailsData.Name}`}
                             className="max-w-full h-auto max-h-48 mx-auto rounded-lg shadow-sm"
                             onError={(e) => {

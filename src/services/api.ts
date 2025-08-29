@@ -4,23 +4,20 @@ import axios from 'axios';
 // const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 // console.log('\n\n\n', apiUrl);
 
-export const getApiUrl = async () => {
-  let uiApiUrl;
+export let uiApiUrl: string;
 
-  if (import.meta.env.VITE_ENV === 'prod') {
-    uiApiUrl = import.meta.env.VITE_API_BASE_URL_PROD;
-  } else {
-    uiApiUrl = import.meta.env.VITE_API_BASE_URL_LOCAL;
-  }
 
-  return uiApiUrl;
+
+if (import.meta.env.VITE_ENV === 'prod') {
+  uiApiUrl = import.meta.env.VITE_API_BASE_URL_PROD;
+} else {
+  uiApiUrl = import.meta.env.VITE_API_BASE_URL_LOCAL;
 }
 
-const apiUrl = await getApiUrl()
-console.log('\n\n\n', apiUrl);
+
 
 const api = axios.create({
-  baseURL: apiUrl, // API URL from environment variable
+  baseURL: uiApiUrl, // API URL from environment variable
   headers: {
     'Content-Type': 'application/json',
   },

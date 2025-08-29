@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRBAC } from '../contexts/RBACContext';
-import { getApiUrl, toolApi } from '../services/api';
+import { uiApiUrl, toolApi } from '../services/api';
 import {
   ArrowRight,
   User,
@@ -74,7 +74,6 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions = [], sh
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [transactionImages, setTransactionImages] = useState<any[]>([]);
   const [imagesLoading, setImagesLoading] = useState(false);
-  const apiUrl = getApiUrl();
 
   useEffect(() => {
     loadTransactionTypes();
@@ -510,10 +509,10 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({ transactions = [], sh
                       ) : transactionImages.length > 0 ? (
                         <div className="grid grid-cols-1 gap-4">
                           {transactionImages.map((image: any, index: number) => (
-                            console.log(`Hoe de fok is die moontlik: ${apiUrl}${image.ImageURL}`),
+                            console.log(`Hoe de fok is die moontlik: ${uiApiUrl}${image.ImageURL}`),
                             <div key={image.ImageID || index} className="space-y-2">
                               <img
-                                src={`${apiUrl}${image.ImageURL}`}
+                                src={`${uiApiUrl}${image.ImageURL}`}
                                 alt={`Transaction image ${index + 1}`}
                                 className="max-w-full h-auto max-h-64 mx-auto rounded-lg shadow-sm"
                                 onError={(e) => {
