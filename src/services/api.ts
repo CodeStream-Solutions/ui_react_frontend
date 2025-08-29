@@ -8,15 +8,16 @@ export const getApiUrl = async () => {
   let uiApiUrl;
 
   if (import.meta.env.VITE_ENV === 'prod') {
-    uiApiUrl = 'http://46.101.79.112';
+    uiApiUrl = import.meta.env.VITE_API_BASE_URL_PROD;
   } else {
-    uiApiUrl = 'http://localhost:8000';
+    uiApiUrl = import.meta.env.VITE_API_BASE_URL_LOCAL;
   }
 
   return uiApiUrl;
 }
 
 const apiUrl = await getApiUrl()
+console.log('\n\n\n', apiUrl);
 
 const api = axios.create({
   baseURL: apiUrl, // API URL from environment variable
